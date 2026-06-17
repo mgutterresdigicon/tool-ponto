@@ -59,7 +59,7 @@ tool-ponto/
 - Sem etapa de build — ES modules nativos do browser
 - Deploy: `firebase deploy` ou `./deploy.sh`
 - Teste local: `firebase serve --only hosting`
-- **Nunca fazer commit ou push sem solicitação explícita do usuário**
+- **Nunca fazer commit, push ou deploy sem solicitação explícita do usuário**
 
 ## Regras de Negócio
 - Carga padrão: 08:48/dia
