@@ -1,41 +1,13 @@
-# Controle de Ponto 2026
+# Controle de Ponto
 
-Ferramenta HTML para inserção e controle de horário de trabalho, baseada na planilha `Ponto_2026.xlsm`.
+Aplicação web para registro e controle de horário de trabalho, com sincronização via Firebase.
 
-## Funcionalidades
+## Versão Atual: v2.0.0
 
-- Registro de entrada/saída em até 3 turnos por dia
-- Cálculos automáticos: Total por turno, Total do dia, Azure (decimal), Hora-Extra
-- Saída Normal (carga + intervalo) e Saída Extra (máx 10h + intervalo)
-- Tolerância de 6 minutos para hora-extra
-- Carga horária ajustável com Bônus e Compensação (`Carga = |8:48 - Bônus + Comp|`)
-- Períodos configuráveis (padrão: 16/mês a 15/mês seguinte)
-- Seletor de ano para uso contínuo
-- Auto-formatação de horário (ex: `0600` → `06:00`)
-- Navegação por Enter entre campos
-- Atualização em tempo real usando hora atual como saída provisória
-- Geração automática de dias úteis por período
-
-## Armazenamento
-
-- **localStorage** — cache rápido no navegador (salvar/carregar automático por período)
-- **Backup JSON** — exporta/importa todos os períodos em arquivo `.json` portátil
-- **Exportar CSV** — para uso em Excel ou outras ferramentas
-
-## Como usar
-
-Abrir `ponto.html` no navegador:
-
-```bash
-xdg-open ponto.html
-```
-
-## Atalhos
-
-- **Enter** em campo de horário: formata e pula para próximo campo
-- **Fluxo**: Entrada1 → Saída1 → Entrada2 → Saída2 → (Entrada3 → Saída3) → Entrada1 da próxima linha
-
-## Versão
-
-Atual: **v1.0.1**
-
+## Arquivos Principais
+- `public/index.html` — Frontend (login + tabela de ponto)
+- `public/js/ponto.js` — Lógica de cálculos, linhas, exportação
+- `public/js/storage.js` — Persistência (Firestore + localStorage fallback)
+- `public/js/auth.js` — Autenticação Google
+- `public/js/firebase-config.js` — Credenciais Firebase + emails autorizados
+- `ponto.html` — Versão standalone (sem Firebase, localStorage only)

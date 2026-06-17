@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Ponto</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="screen-login">
+  <h1>🕐 Controle de Ponto</h1>
+  <p style="opacity:.6;margin-bottom:20px">Registre e acompanhe suas horas de trabalho, de qualquer dispositivo.</p>
+  <button class="btn-google" onclick="doLogin()">
+    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+    Entrar com Google
+  </button>
+  <div id="access-denied" style="display:none" class="access-denied-box">
+    🚫 Acesso não autorizado.
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="screen-app">
+
+<div class="user-bar">
+  <img id="user-photo" src="" alt="">
+  <span id="user-name"></span>
+  <button onclick="doLogout()">Sair</button>
+</div>
+
+<h1>Controle de Ponto</h1>
+<div class="controls">
+  <div class="group">
+    <label>Ano:</label>
+    <input type="number" id="anoCtrl" value="2026" min="2024" max="2050" style="width:80px">
+    <label>Período:</label>
+    <select id="selPeriodo">
+      <option value="01">16/01 - 15/02</option>
+      <option value="02">16/02 - 15/03</option>
+      <option value="03">16/03 - 15/04</option>
+      <option value="04">16/04 - 15/05</option>
+      <option value="05">16/05 - 15/06</option>
+      <option value="06">16/06 - 15/07</option>
+      <option value="07">16/07 - 15/08</option>
+      <option value="08">16/08 - 15/09</option>
+      <option value="09">16/09 - 15/10</option>
+      <option value="10">16/10 - 15/11</option>
+      <option value="11">16/11 - 15/12</option>
+      <option value="12">16/12 - 15/01</option>
+    </select>
+    <button onclick="editarPeriodo()">✏️</button>
+  </div>
+  <div class="group">
+    <label>Carga/Dia:</label>
+    <input type="text" id="cargaDia" value="08:48" style="width:70px">
+    <button onclick="toggleBonusComp()">±Bônus/Comp</button>
+  </div>
+  <div class="group">
+    <button onclick="salvar()">💾 Salvar</button>
+    <button id="btnExport">CSV</button>
+    <button onclick="exportJSON()">⬇ JSON</button>
+    <button onclick="document.getElementById('jsonInput').click()">⬆ JSON</button>
+    <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
+  </div>
+</div>
+
+<div style="overflow-x:auto">
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th class="col-bc"></th>
+  <th></th>
+  <th class="col-bc"></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th class="col-t3"></th>
+  <th class="col-t3"></th>
+  <th class="col-t3"></th>
+  <th colspan="2" style="background:#2c1a0e;color:#ff9800">Saída</th>
+  <th></th>
+  <th></th>
+  <th></th>
+</tr>
+<tr>
+  <th><button class="row-btn" onclick="addRow('','','','','','','','',document.getElementById('tbody').firstElementChild)" title="Adicionar linha">+</button></th>
+  <th>Dia</th>
+  <th>Sem</th>
+  <th class="col-bc">Bônus</th>
+  <th>Carga</th>
+  <th class="col-bc">Comp.</th>
+  <th>Entrada 1</th>
+  <th>Saída 1</th>
+  <th>Total 1</th>
+  <th>Entrada 2</th>
+  <th>Saída 2</th>
+  <th>Total 2</th>
+  <th class="col-t3">Entrada 3</th>
+  <th class="col-t3">Saída 3</th>
+  <th class="col-t3">Total 3</th>
+  <th style="color:#ff9800">Normal</th>
+  <th style="color:#e74c3c">Extra</th>
+  <th>Azure</th>
+  <th>Total</th>
+  <th>Hora-Extra</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<div class="summary">
+  <span>Carga Total: <b id="sumCarga">00:00</b></span>
+  <span>Carga Parcial: <b id="sumCargaParcial">00:00</b></span>
+  <span>Azure Total: <b id="sumAzure">0.00</b></span>
+  <span>Trabalhado: <b id="sumTrab">00:00</b></span>
+  <span>Hora-Extra: <b id="sumHE">00:00</b></span>
+</div>
+<div style="text-align:center;margin-top:15px;opacity:.4;font-size:12px">v2.0.0</div>
+
+</div><!-- /screen-app -->
+
+<!-- Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <p id="modalMsg"></p>
+    <input type="text" id="modalInput" style="display:none">
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modalCancel" style="display:none">Cancelar</button>
+      <button class="btn-ok" id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- JS Modules -->
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/ponto.js"></script>
+</body>
+</html>
