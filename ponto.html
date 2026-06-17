@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Ponto 2026</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+h1 { text-align: center; margin-bottom: 10px; color: #00d4ff; }
+.controls { display: flex; gap: 12px; justify-content: center; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+.group { display: flex; gap: 8px; align-items: center; background: #0f3460; padding: 6px 12px; border-radius: 6px; }
+.group label { font-size: 13px; opacity: .7; }
+.controls select, .controls input, .controls button {
+  padding: 6px 12px; border-radius: 4px; border: 1px solid #444; background: #16213e; color: #e0e0e0; font-size: 14px;
+}
+.controls button { background: #0f3460; cursor: pointer; }
+.controls button:hover { background: #1a5276; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { border: 1px solid #333; padding: 4px 6px; text-align: center; white-space: nowrap; }
+th { background: #0f3460; color: #00d4ff; position: sticky; top: 0; }
+td input[type="text"] { width: 55px; text-align: center; background: #16213e; color: #e0e0e0; border: 1px solid #444; border-radius: 3px; padding: 2px; font-size: 13px; }
+td input[readonly] { background: transparent; border-color: transparent; color: #7fdbff; }
+td input:focus { border-color: #00d4ff; outline: none; }
+.calc { color: #7fdbff; font-weight: bold; }
+.col-bc { display: none; }
+.col-t3 { display: none; }
+.positive { color: #2ecc71; }
+.negative { color: #e74c3c; }
+.summary { margin-top: 15px; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; font-size: 15px; }
+.summary span { background: #0f3460; padding: 8px 16px; border-radius: 6px; }
+.row-btn { background: none; border: none; color: #e0e0e0; cursor: pointer; font-size: 16px; padding: 0 3px; }
+.row-btn:hover { color: #00d4ff; }
+.btn-del:hover { color: #e74c3c; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 999; align-items: center; justify-content: center; }
+.modal-bg.active { display: flex; }
+.modal { background: #16213e; border: 1px solid #444; border-radius: 8px; padding: 20px; min-width: 300px; max-width: 90vw; }
+.modal h3 { color: #00d4ff; margin-bottom: 12px; }
+.modal input[type="text"] { width: 100%; padding: 6px; margin: 8px 0; background: #1a1a2e; color: #e0e0e0; border: 1px solid #444; border-radius: 4px; font-size: 14px; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px; }
+.modal-btns button { padding: 6px 16px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; }
+.modal-btns .btn-ok { background: #27ae60; color: #fff; }
+.modal-btns .btn-cancel { background: #444; color: #e0e0e0; }
+</style>
+</head>
+<body>
+<h1>Controle de Ponto</h1>
+<div class="controls">
+  <div class="group">
+    <label>Ano:</label>
+    <input type="number" id="anoCtrl" value="2026" min="2024" max="2050" style="width:80px">
+    <label>Período:</label>
+    <select id="selPeriodo">
+      <option value="01">16/01 - 15/02</option>
+      <option value="02">16/02 - 15/03</option>
+      <option value="03">16/03 - 15/04</option>
+      <option value="04">16/04 - 15/05</option>
+      <option value="05">16/05 - 15/06</option>
+      <option value="06">16/06 - 15/07</option>
+      <option value="07">16/07 - 15/08</option>
+      <option value="08">16/08 - 15/09</option>
+      <option value="09">16/09 - 15/10</option>
+      <option value="10">16/10 - 15/11</option>
+      <option value="11">16/11 - 15/12</option>
+      <option value="12">16/12 - 15/01</option>
+    </select>
+    <button onclick="editarPeriodo()">✏️</button>
+  </div>
+  <div class="group">
+    <label>Carga/Dia:</label>
+    <input type="text" id="cargaDia" value="08:48" style="width:70px">
+    <button onclick="toggleBonusComp()">±Bônus/Comp</button>
+  </div>
+  <div class="group">
+    <button onclick="salvar()">💾 Salvar</button>
+    <button id="btnExport">CSV</button>
+    <button onclick="exportJSON()">⬇ JSON</button>
+    <button onclick="document.getElementById('jsonInput').click()">⬆ JSON</button>
+    <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
+  </div>
+</div>
+
+<div style="overflow-x:auto">
+<table>
+<thead>
+<tr>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th class="col-bc"></th>
+  <th></th>
+  <th class="col-bc"></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th></th>
+  <th class="col-t3"></th>
+  <th class="col-t3"></th>
+  <th class="col-t3"></th>
+  <th colspan="2" style="background:#2c1a0e;color:#ff9800">Saída</th>
+  <th></th>
+  <th></th>
+  <th></th>
+</tr>
+<tr>
+  <th><button class="row-btn" onclick="addRow('','','','','','','','',tbody.firstElementChild)" title="Adicionar linha">+</button></th>
+  <th>Dia</th>
+  <th>Sem</th>
+  <th class="col-bc">Bônus</th>
+  <th>Carga</th>
+  <th class="col-bc">Comp.</th>
+  <th>Entrada 1</th>
+  <th>Saída 1</th>
+  <th>Total 1</th>
+  <th>Entrada 2</th>
+  <th>Saída 2</th>
+  <th>Total 2</th>
+  <th class="col-t3">Entrada 3</th>
+  <th class="col-t3">Saída 3</th>
+  <th class="col-t3">Total 3</th>
+  <th style="color:#ff9800">Normal</th>
+  <th style="color:#e74c3c">Extra</th>
+  <th>Azure</th>
+  <th>Total</th>
+  <th>Hora-Extra</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<div class="summary">
+  <span>Carga Total: <b id="sumCarga">00:00</b></span>
+  <span>Carga Parcial: <b id="sumCargaParcial">00:00</b></span>
+  <span>Azure Total: <b id="sumAzure">0.00</b></span>
+  <span>Trabalhado: <b id="sumTrab">00:00</b></span>
+  <span>Hora-Extra: <b id="sumHE">00:00</b></span>
+</div>
+<div style="text-align:center;margin-top:15px;opacity:.4;font-size:12px">v1.0.1</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <p id="modalMsg"></p>
+    <input type="text" id="modalInput" style="display:none">
+    <div class="modal-btns">
+      <button class="btn-cancel" id="modalCancel" style="display:none">Cancelar</button>
+      <button class="btn-ok" id="modalOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const tbody = document.getElementById('tbody');
+
+function modal(title, msg, {input = false, confirm = false, defaultVal = ''} = {}) {
+  return new Promise(resolve => {
+    const bg = document.getElementById('modalBg');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMsg').textContent = msg;
+    const inp = document.getElementById('modalInput');
+    const cancel = document.getElementById('modalCancel');
+    const ok = document.getElementById('modalOk');
+    inp.style.display = input ? '' : 'none';
+    inp.value = defaultVal;
+    cancel.style.display = confirm || input ? '' : 'none';
+    bg.classList.add('active');
+    if (input) inp.focus();
+    function close(val) { bg.classList.remove('active'); ok.onclick = null; cancel.onclick = null; resolve(val); }
+    ok.onclick = () => close(input ? inp.value : true);
+    cancel.onclick = () => close(null);
+    inp.onkeydown = e => { if (e.key === 'Enter') close(inp.value); };
+  });
+}
+const STORAGE_KEY = () => 'ponto' + document.getElementById('anoCtrl').value + '_';
+
+function timeToMin(str) {
+  if (!str || str.trim() === '') return null;
+  const [h, m] = str.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+function minToStr(min) {
+  if (min == null) return '';
+  const neg = min < 0;
+  min = Math.abs(min);
+  return (neg ? '-' : '') + String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+}
+
+function formatInput(inp) {
+  const v = inp.value.replace(/[^0-9]/g, '');
+  if (!v) return;
+  if (inp.value.includes(':')) return;
+  if (v.length <= 2) inp.value = v.padStart(2, '0') + ':00';
+  else { const p = v.padStart(4, '0'); inp.value = p.slice(0, 2) + ':' + p.slice(2, 4); }
+}
+
+function updateT3Visibility() {
+  const hasT3 = tbody.querySelector('.turno3') != null;
+  document.querySelectorAll('.col-t3').forEach(el => el.style.display = hasT3 ? 'table-cell' : 'none');
+  // Garantir que linhas sem turno3 tenham placeholders
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const has = tr.querySelector('.turno3');
+    let placeholders = tr.querySelectorAll('.t3-placeholder');
+    if (hasT3 && !has && placeholders.length === 0) {
+      const inp = tr.querySelectorAll('input[type="text"]');
+      const s2td = inp[7].parentElement;
+      const t2td = s2td.nextElementSibling;
+      for (let i = 0; i < 3; i++) {
+        const td = document.createElement('td');
+        td.className = 't3-placeholder';
+        t2td.after(td);
+      }
+    } else if (!hasT3 && placeholders.length) {
+      placeholders.forEach(el => el.remove());
+    }
+  });
+}
+
+function addTurno3(tr) {
+  if (tr.querySelector('.turno3')) {
+    tr.querySelectorAll('.turno3').forEach(el => el.remove());
+    calcRow(tr);
+    updateT3Visibility();
+    return;
+  }
+  // Remover placeholders se existirem
+  tr.querySelectorAll('.t3-placeholder').forEach(el => el.remove());
+  const inp = tr.querySelectorAll('input[type="text"]');
+  const s2td = inp[7].parentElement;
+  const t2td = s2td.nextElementSibling;
+  const e3td = document.createElement('td');
+  e3td.className = 'turno3';
+  e3td.innerHTML = '<input type="text" placeholder="E3" style="width:55px">';
+  const s3td = document.createElement('td');
+  s3td.className = 'turno3';
+  s3td.innerHTML = '<input type="text" placeholder="S3" style="width:55px">';
+  const t3td = document.createElement('td');
+  t3td.className = 'turno3 calc';
+  t2td.after(e3td, s3td, t3td);
+  [e3td, s3td].forEach((td, i) => {
+    const input = td.querySelector('input');
+    input.addEventListener('input', () => calcRow(tr));
+    input.addEventListener('blur', function() { formatInput(this); calcRow(tr); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        formatInput(this);
+        calcRow(tr);
+        if (i === 0) { s3td.querySelector('input').focus(); }
+        else { const next = tr.nextElementSibling?.querySelectorAll('input[type="text"]')[4]; if (next) { next.focus(); next.select(); } }
+      }
+    });
+  });
+  calcRow(tr);
+  updateT3Visibility();
+}
+
+function calcRow(tr) {
+  const inp = tr.querySelectorAll('input[type="text"]');
+  // inp: 0=Dia, 1=Bônus, 2=Carga, 3=Comp, 4=E1, 5=S1, 6=E2, 7=S2
+  const baseCarga = timeToMin(document.getElementById('cargaDia').value) || 528;
+  const bonus = timeToMin(inp[1].value) || 0;
+  const comp = timeToMin(inp[3].value) || 0;
+  const carga = Math.abs(baseCarga - bonus + comp);
+  inp[2].value = minToStr(carga);
+
+  // Dia da semana
+  const diaNum = parseInt(inp[0].value);
+  const semCell = tr.querySelector('.dia-sem');
+  if (diaNum && semCell) {
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const sel = document.getElementById('selPeriodo').value;
+    const m1 = parseInt(sel) - 1;
+    const year = parseInt(document.getElementById('anoCtrl').value);
+    // Se dia >= diaInicio, é do mês m1; senão é do mês seguinte
+    const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
+    const diaIni = cfg ? cfg.ini : 16;
+    const mes = diaNum >= diaIni ? m1 : (m1 + 1) % 12;
+    const y = (diaNum < diaIni && m1 === 11) ? year + 1 : year;
+    const dt = new Date(y, mes, diaNum);
+    semCell.textContent = dias[dt.getDay()];
+  } else if (semCell) {
+    semCell.textContent = '';
+  }
+
+  const e1 = timeToMin(inp[4].value);
+  const s1 = timeToMin(inp[5].value);
+  const e2 = timeToMin(inp[6].value);
+  const s2 = timeToMin(inp[7].value);
+
+  // Usar hora atual como saída provisória se entrada preenchida mas saída não
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const s1Calc = s1 != null ? s1 : (e1 != null ? nowMin : null);
+  const s2Calc = s2 != null ? s2 : (e2 != null ? nowMin : null);
+
+  const t1 = (e1 != null && s1Calc != null) ? s1Calc - e1 : null;
+  const t2 = (e2 != null && s2Calc != null) ? s2Calc - e2 : null;
+
+  // Turno 3 (opcional)
+  const t3inputs = tr.querySelectorAll('.turno3 input');
+  const e3 = t3inputs.length ? timeToMin(t3inputs[0].value) : null;
+  const s3 = t3inputs.length ? timeToMin(t3inputs[1].value) : null;
+  const s3Calc = s3 != null ? s3 : (e3 != null ? nowMin : null);
+  const t3 = (e3 != null && s3Calc != null) ? s3Calc - e3 : null;
+
+  const total = (t1 != null || t2 != null || t3 != null) ? (t1 || 0) + (t2 || 0) + (t3 || 0) : null;
+
+  let normal = null, extra = null, he = null;
+  if (e1 != null) {
+    const intervalo = (e2 != null && s1 != null) ? e2 - s1 : 60;
+    normal = e1 + carga + intervalo;
+    extra = e1 + 600 + intervalo;
+  }
+  if (total != null) {
+    const diff = total - carga;
+    he = Math.abs(diff) >= 6 ? diff : 0;
+  }
+
+  const c = tr.querySelectorAll('.calc:not(.turno3)');
+  // c: 0=Total1, 1=Total2, 2=Saída Normal, 3=Saída Extra, 4=Azure, 5=Total, 6=HE
+  c[0].textContent = minToStr(t1);
+  c[1].textContent = minToStr(t2);
+
+  // Total3 se existir
+  const t3cell = tr.querySelector('.turno3.calc');
+  if (t3cell) t3cell.textContent = minToStr(t3);
+  c[2].textContent = minToStr(normal);
+  c[2].style.color = '#ff9800';
+  c[3].textContent = minToStr(extra);
+  c[3].style.color = '#e74c3c';
+  c[4].textContent = total != null ? (total / 60).toFixed(2) : '';
+  c[5].textContent = minToStr(total);
+  c[6].textContent = minToStr(he);
+  c[6].className = 'calc ' + (he != null ? (he >= 0 ? 'positive' : 'negative') : '');
+
+  updateSummary();
+}
+
+function addRow(dia = '', bonus = '', carga = '', comp = '', e1 = '', s1 = '', e2 = '', s2 = '', before = null) {
+  if (!carga) carga = document.getElementById('cargaDia').value;
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><button class="row-btn" onclick="addRow('','','','','','','','',this.closest('tr').nextElementSibling)" title="Adicionar linha abaixo">+</button><button class="row-btn btn-del" onclick="this.closest('tr').remove();updateSummary()" title="Remover linha">✕</button><button class="row-btn" onclick="addTurno3(this.closest('tr'))" title="Adicionar/remover turno 3">³</button></td>
+    <td><input type="text" value="${dia}" placeholder="DD" style="width:35px"></td>
+    <td class="dia-sem"></td>
+    <td class="col-bc"><input type="text" value="${bonus}" style="width:45px"></td>
+    <td><input type="text" value="${carga}" style="width:55px" readonly tabindex="-1"></td>
+    <td class="col-bc"><input type="text" value="${comp}" style="width:45px"></td>
+    <td><input type="text" value="${e1}" placeholder="HH:MM"></td>
+    <td><input type="text" value="${s1}" placeholder="HH:MM"></td>
+    <td class="calc"></td>
+    <td><input type="text" value="${e2}" placeholder="HH:MM"></td>
+    <td><input type="text" value="${s2}" placeholder="HH:MM"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+    <td class="calc"></td>
+  `;
+  const inputs = tr.querySelectorAll('input[type="text"]');
+  inputs.forEach((inp, idx) => {
+    inp.addEventListener('input', () => calcRow(tr));
+    inp.addEventListener('blur', function() { if (idx >= 1 && idx !== 2) { formatInput(this); calcRow(tr); } });
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (idx >= 1 && idx !== 2) { formatInput(this); calcRow(tr); }
+        // Após Saída2 (idx 7), pular para Entrada3 se existir, senão Entrada1 da próxima linha
+        let next;
+        if (idx === 7) {
+          const e3 = tr.querySelector('.turno3 input');
+          next = e3 || tr.nextElementSibling?.querySelectorAll('input[type="text"]')[4];
+        }
+        else if (idx < 4) next = inputs[4];
+        else next = inputs[idx + 1];
+        if (next) { next.focus(); next.select(); }
+      }
+    });
+  });
+  if (before) tbody.insertBefore(tr, before);
+  else tbody.appendChild(tr);
+  calcRow(tr);
+  return tr;
+}
+
+function updateSummary() {
+  let sumCarga = 0, sumCargaParcial = 0, sumTrab = 0, sumHE = 0, sumAzure = 0;
+  const baseCarga = timeToMin(document.getElementById('cargaDia').value) || 528;
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const inp = tr.querySelectorAll('input[type="text"]');
+    const bonus = timeToMin(inp[1].value) || 0;
+    const comp = timeToMin(inp[3].value) || 0;
+    const carga = Math.abs(baseCarga - bonus + comp);
+    const e1 = timeToMin(inp[4].value), s1 = timeToMin(inp[5].value);
+    const e2 = timeToMin(inp[6].value), s2 = timeToMin(inp[7].value);
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const s1Calc = s1 != null ? s1 : (e1 != null ? nowMin : null);
+    const s2Calc = s2 != null ? s2 : (e2 != null ? nowMin : null);
+    const t1 = (e1 != null && s1Calc != null) ? s1Calc - e1 : 0;
+    const t2 = (e2 != null && s2Calc != null) ? s2Calc - e2 : 0;
+    const t3inputs = tr.querySelectorAll('.turno3 input');
+    const e3 = t3inputs.length ? timeToMin(t3inputs[0].value) : null;
+    const s3 = t3inputs.length ? timeToMin(t3inputs[1].value) : null;
+    const s3Calc = s3 != null ? s3 : (e3 != null ? nowMin : null);
+    const t3 = (e3 != null && s3Calc != null) ? s3Calc - e3 : 0;
+    const total = t1 + t2 + t3;
+    sumCarga += carga;
+    if (e1 != null) {
+      sumCargaParcial += carga;
+      sumTrab += total;
+      const diff = total - carga;
+      sumHE += Math.abs(diff) >= 6 ? diff : 0;
+      sumAzure += total / 60;
+    }
+  });
+  document.getElementById('sumCarga').textContent = minToStr(sumCarga);
+  document.getElementById('sumCargaParcial').textContent = minToStr(sumCargaParcial);
+  document.getElementById('sumTrab').textContent = minToStr(sumTrab);
+  document.getElementById('sumHE').textContent = minToStr(sumHE);
+  document.getElementById('sumHE').className = sumHE >= 0 ? 'positive' : 'negative';
+  document.getElementById('sumAzure').textContent = sumAzure.toFixed(2);
+}
+
+function salvar() {
+  const periodo = document.getElementById('selPeriodo').value;
+  const data = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const vals = Array.from(tr.querySelectorAll('input[type="text"]')).map(i => i.value);
+    const t3inputs = tr.querySelectorAll('.turno3 input');
+    const row = vals.slice(0, 8);
+    if (t3inputs.length) { row.push(t3inputs[0].value); row.push(t3inputs[1].value); }
+    data.push(row);
+  });
+  localStorage.setItem(STORAGE_KEY() + periodo, JSON.stringify(data));
+  modal('✔ Salvo', 'Dados salvos com sucesso!');
+}
+
+function carregar() {
+  const periodo = document.getElementById('selPeriodo').value;
+  const raw = localStorage.getItem(STORAGE_KEY() + periodo);
+  if (!raw) { modal('⚠ Aviso', 'Nenhum dado salvo para este período.'); return; }
+  tbody.innerHTML = '';
+  JSON.parse(raw).forEach(v => addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]));
+}
+
+function exportCSV() {
+  let csv = 'Dia;Bonus;Carga;Comp;Entrada1;Saida1;Total1;Entrada2;Saida2;Total2;Normal;Extra;Total;Azure;HoraExtra\n';
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td')).slice(1);
+    csv += cells.map(c => { const i = c.querySelector('input'); return i ? i.value : c.textContent; }).join(';') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `ponto_${document.getElementById('selPeriodo').value}_2026.csv`;
+  a.click();
+}
+
+function exportJSON() {
+  const allData = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith(STORAGE_KEY())) allData[k] = JSON.parse(localStorage.getItem(k));
+  }
+  const periodo = document.getElementById('selPeriodo').value;
+  const cur = [];
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const vals = Array.from(tr.querySelectorAll('input[type="text"]')).map(i => i.value).slice(0, 8);
+    const t3inputs = tr.querySelectorAll('.turno3 input');
+    if (t3inputs.length) { vals.push(t3inputs[0].value); vals.push(t3inputs[1].value); }
+    cur.push(vals);
+  });
+  allData[STORAGE_KEY() + periodo] = cur;
+  const sorted = Object.keys(allData).sort().reduce((o, k) => { o[k] = allData[k]; return o; }, {});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(sorted, null, 2)], { type: 'application/json' }));
+  a.download = `ponto_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = JSON.parse(e.target.result);
+    for (const [k, v] of Object.entries(data)) localStorage.setItem(k, JSON.stringify(v));
+    modal('✔ Importado', Object.keys(data).length + ' período(s) restaurados.');
+    carregar();
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+document.getElementById('btnExport').addEventListener('click', exportCSV);
+document.getElementById('selPeriodo').addEventListener('change', loadPeriodo);
+document.getElementById('cargaDia').addEventListener('input', () => tbody.querySelectorAll('tr').forEach(calcRow));
+document.getElementById('anoCtrl').addEventListener('change', function() {
+  const now = new Date();
+  const sel = document.getElementById('selPeriodo');
+  if (parseInt(this.value) === now.getFullYear()) {
+    sel.value = now.getDate() >= 16 ? String(now.getMonth() + 1).padStart(2, '0') : String(now.getMonth() || 12).padStart(2, '0');
+  } else {
+    sel.value = '01';
+  }
+  loadPeriodo();
+});
+
+function toggleBonusComp() {
+  document.querySelectorAll('.col-bc').forEach(el => {
+    el.style.display = el.style.display === '' ? 'table-cell' : '';
+  });
+}
+
+async function editarPeriodo() {
+  const sel = document.getElementById('selPeriodo');
+  const opt = sel.options[sel.selectedIndex];
+  const novo = await modal('✏️ Editar Período', 'Formato: DD/MM - DD/MM', {input: true, defaultVal: opt.textContent});
+  if (novo && novo.includes('-')) {
+    opt.textContent = novo.trim();
+    const parts = novo.split('-').map(s => s.trim());
+    const ini = parseInt(parts[0]);
+    const fim = parseInt(parts[1].split('/')[0]);
+    localStorage.setItem('ponto_periodo_' + sel.value, JSON.stringify({ label: novo.trim(), ini, fim }));
+
+    // Ajustar período anterior: fim = ini - 1
+    const idxAtual = sel.selectedIndex;
+    if (idxAtual > 0) {
+      const prevOpt = sel.options[idxAtual - 1];
+      const prevCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + prevOpt.value) || 'null');
+      const prevIni = prevCfg ? prevCfg.ini : 16;
+      const prevFim = ini - 1;
+      const prevLabel = String(prevIni).padStart(2, '0') + '/' + prevOpt.value + ' - ' + String(prevFim).padStart(2, '0') + '/' + sel.value;
+      prevOpt.textContent = prevLabel;
+      localStorage.setItem('ponto_periodo_' + prevOpt.value, JSON.stringify({ label: prevLabel, ini: prevIni, fim: prevFim }));
+    }
+
+    // Ajustar próximo período: ini = fim + 1
+    if (idxAtual < sel.options.length - 1) {
+      const nextOpt = sel.options[idxAtual + 1];
+      const nextCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + nextOpt.value) || 'null');
+      const nextFim = nextCfg ? nextCfg.fim : 15;
+      const nextIni = fim + 1;
+      const nextLabel = String(nextIni).padStart(2, '0') + '/' + nextOpt.value + ' - ' + String(nextFim).padStart(2, '0') + '/' + String((parseInt(nextOpt.value) % 12) + 1).padStart(2, '0');
+      nextOpt.textContent = nextLabel;
+      localStorage.setItem('ponto_periodo_' + nextOpt.value, JSON.stringify({ label: nextLabel, ini: nextIni, fim: nextFim }));
+    }
+
+    loadPeriodo();
+  }
+}
+
+function loadPeriodo() {
+  const sel = document.getElementById('selPeriodo').value;
+  tbody.innerHTML = '';
+  const raw = localStorage.getItem(STORAGE_KEY() + sel);
+  if (raw) {
+    JSON.parse(raw).forEach(v => {
+      const tr = addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+      if (v[8] || v[9]) {
+        addTurno3(tr);
+        const t3inputs = tr.querySelectorAll('.turno3 input');
+        if (t3inputs[0]) t3inputs[0].value = v[8] || '';
+        if (t3inputs[1]) t3inputs[1].value = v[9] || '';
+        calcRow(tr);
+      }
+    });
+    return;
+  }
+  // Verificar config de período customizado
+  const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
+  const diaIni = cfg ? cfg.ini : 16;
+  const diaFim = cfg ? cfg.fim : 15;
+  const m1 = parseInt(sel) - 1, year = parseInt(document.getElementById('anoCtrl').value);
+  for (let d = diaIni; d <= new Date(year, m1 + 1, 0).getDate(); d++) {
+    if (new Date(year, m1, d).getDay() % 6 !== 0) addRow(String(d));
+  }
+  const m2 = (m1 + 1) % 12, y2 = m1 === 11 ? year + 1 : year;
+  for (let d = 1; d <= diaFim; d++) {
+    if (new Date(y2, m2, d).getDay() % 6 !== 0) addRow(String(d));
+  }
+}
+
+// Init
+(function() {
+  // Restaurar labels customizados
+  const sel = document.getElementById('selPeriodo');
+  Array.from(sel.options).forEach(opt => {
+    const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + opt.value) || 'null');
+    if (cfg) opt.textContent = cfg.label;
+  });
+  const now = new Date();
+  let val = now.getDate() >= 16 ? String(now.getMonth() + 1).padStart(2, '0') : String(now.getMonth() || 12).padStart(2, '0');
+  sel.value = val;
+  loadPeriodo();
+  // Atualizar na virada exata de cada minuto
+  function tickOnMinute() {
+    tbody.querySelectorAll('tr').forEach(calcRow);
+    const ms = 60000 - (Date.now() % 60000);
+    setTimeout(tickOnMinute, ms);
+  }
+  setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
+})();
+</script>
+</body>
+</html>
