@@ -57,10 +57,10 @@ window.addTurno3 = function(tr) {
   const t2td = s2td.nextElementSibling;
   const e3td = document.createElement('td');
   e3td.className = 'turno3';
-  e3td.innerHTML = '<input type="text" placeholder="E3" style="width:55px">';
+  e3td.innerHTML = '<input type="text" placeholder="HH:MM" style="width:55px">';
   const s3td = document.createElement('td');
   s3td.className = 'turno3';
-  s3td.innerHTML = '<input type="text" placeholder="S3" style="width:55px">';
+  s3td.innerHTML = '<input type="text" placeholder="HH:MM" style="width:55px">';
   const t3td = document.createElement('td');
   t3td.className = 'turno3 calc';
   t2td.after(e3td, s3td, t3td);
@@ -239,6 +239,7 @@ window.updateSummary = function() {
 window.salvar = async function() {
   const ano = document.getElementById('anoCtrl').value;
   const periodo = document.getElementById('selPeriodo').value;
+  // Salvar período atual da tela
   const data = [];
   tbody.querySelectorAll('tr').forEach(tr => {
     const vals = Array.from(tr.querySelectorAll('input[type="text"]')).map(i => i.value);
@@ -247,9 +248,18 @@ window.salvar = async function() {
     if (t3inputs.length) { row.push(t3inputs[0].value); row.push(t3inputs[1].value); }
     data.push(row);
   });
+  localStorage.setItem(`ponto${ano}_${periodo}`, JSON.stringify(data));
+  // Salvar todos os períodos de todos os anos no Firestore
   try {
-    await savePeriodo(ano, periodo, data);
-    modal('✔ Salvo', 'Dados salvos com sucesso!');
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      const match = k.match(/^ponto(\d{4})_(\d{2})$/);
+      if (match) {
+        const rows = JSON.parse(localStorage.getItem(k));
+        await savePeriodo(match[1], match[2], rows);
+      }
+    }
+    modal('✔ Salvo', 'Todos os dados salvos com sucesso!');
   } catch(e) {
     modal('⚠ Erro', 'Erro ao salvar: ' + e.message);
   }
@@ -347,34 +357,75 @@ window.toggleBonusComp = function() {
 window.editarPeriodo = async function() {
   const sel = document.getElementById('selPeriodo');
   const opt = sel.options[sel.selectedIndex];
-  const novo = await modal('✏️ Editar Período', 'Formato: DD/MM - DD/MM', {input: true, defaultVal: opt.textContent});
-  if (novo && novo.includes('-')) {
-    opt.textContent = novo.trim();
-    const parts = novo.split('-').map(s => s.trim());
-    const ini = parseInt(parts[0]);
-    const fim = parseInt(parts[1].split('/')[0]);
-    localStorage.setItem('ponto_periodo_' + sel.value, JSON.stringify({ label: novo.trim(), ini, fim }));
-    const idxAtual = sel.selectedIndex;
-    if (idxAtual > 0) {
-      const prevOpt = sel.options[idxAtual - 1];
-      const prevCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + prevOpt.value) || 'null');
-      const prevIni = prevCfg ? prevCfg.ini : 16;
-      const prevFim = ini - 1;
-      const prevLabel = String(prevIni).padStart(2, '0') + '/' + prevOpt.value + ' - ' + String(prevFim).padStart(2, '0') + '/' + sel.value;
-      prevOpt.textContent = prevLabel;
-      localStorage.setItem('ponto_periodo_' + prevOpt.value, JSON.stringify({ label: prevLabel, ini: prevIni, fim: prevFim }));
-    }
-    if (idxAtual < sel.options.length - 1) {
-      const nextOpt = sel.options[idxAtual + 1];
-      const nextCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + nextOpt.value) || 'null');
-      const nextFim = nextCfg ? nextCfg.fim : 15;
-      const nextIni = fim + 1;
-      const nextLabel = String(nextIni).padStart(2, '0') + '/' + nextOpt.value + ' - ' + String(nextFim).padStart(2, '0') + '/' + String((parseInt(nextOpt.value) % 12) + 1).padStart(2, '0');
-      nextOpt.textContent = nextLabel;
-      localStorage.setItem('ponto_periodo_' + nextOpt.value, JSON.stringify({ label: nextLabel, ini: nextIni, fim: nextFim }));
-    }
-    loadPeriodo();
+  const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel.value) || 'null');
+  const diaIni = cfg ? cfg.ini : 16;
+  const diaFim = cfg ? cfg.fim : 15;
+  const ano = document.getElementById('anoCtrl').value;
+  const mesIni = parseInt(sel.value);
+  const mesFim = mesIni % 12 + 1;
+
+  const bg = document.getElementById('modalBg');
+  const modalEl = document.querySelector('.modal');
+  document.getElementById('modalTitle').textContent = '✏️ Editar Período';
+  document.getElementById('modalMsg').textContent = '';
+  document.getElementById('modalInput').style.display = 'none';
+  document.getElementById('modalCancel').style.display = '';
+
+  // Inserir campos de data
+  const iniVal = `${ano}-${String(mesIni).padStart(2,'0')}-${String(diaIni).padStart(2,'0')}`;
+  const fimVal = `${mesFim < mesIni ? parseInt(ano)+1 : ano}-${String(mesFim).padStart(2,'0')}-${String(diaFim).padStart(2,'0')}`;
+  let container = document.getElementById('modal-periodo-fields');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'modal-periodo-fields';
+    container.style.cssText = 'display:flex;gap:12px;margin:12px 0;align-items:center';
+    container.innerHTML = `<label style="font-size:13px">Início:</label><input type="date" id="mpInicio" style="padding:6px;background:#1a1a2e;color:#e0e0e0;border:1px solid #444;border-radius:4px">
+      <label style="font-size:13px">Fim:</label><input type="date" id="mpFim" style="padding:6px;background:#1a1a2e;color:#e0e0e0;border:1px solid #444;border-radius:4px">`;
+    document.getElementById('modalMsg').after(container);
   }
+  container.style.display = 'flex';
+  document.getElementById('mpInicio').value = iniVal;
+  document.getElementById('mpFim').value = fimVal;
+  bg.classList.add('active');
+
+  const result = await new Promise(resolve => {
+    document.getElementById('modalOk').onclick = () => resolve(true);
+    document.getElementById('modalCancel').onclick = () => resolve(null);
+  });
+  bg.classList.remove('active');
+  container.style.display = 'none';
+
+  if (!result) return;
+  const ini = new Date(document.getElementById('mpInicio').value);
+  const fim = new Date(document.getElementById('mpFim').value);
+  const newIni = ini.getDate();
+  const newFim = fim.getDate();
+  const label = `${String(newIni).padStart(2,'0')}/${String(ini.getMonth()+1).padStart(2,'0')} - ${String(newFim).padStart(2,'0')}/${String(fim.getMonth()+1).padStart(2,'0')}`;
+  opt.textContent = label;
+  localStorage.setItem('ponto_periodo_' + sel.value, JSON.stringify({ label, ini: newIni, fim: newFim }));
+
+  // Ajustar período anterior
+  const idxAtual = sel.selectedIndex;
+  if (idxAtual > 0) {
+    const prevOpt = sel.options[idxAtual - 1];
+    const prevCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + prevOpt.value) || 'null');
+    const prevIni = prevCfg ? prevCfg.ini : 16;
+    const prevFim = newIni - 1;
+    const prevLabel = String(prevIni).padStart(2,'0') + '/' + prevOpt.value + ' - ' + String(prevFim).padStart(2,'0') + '/' + sel.value;
+    prevOpt.textContent = prevLabel;
+    localStorage.setItem('ponto_periodo_' + prevOpt.value, JSON.stringify({ label: prevLabel, ini: prevIni, fim: prevFim }));
+  }
+  // Ajustar próximo período
+  if (idxAtual < sel.options.length - 1) {
+    const nextOpt = sel.options[idxAtual + 1];
+    const nextCfg = JSON.parse(localStorage.getItem('ponto_periodo_' + nextOpt.value) || 'null');
+    const nextFim = nextCfg ? nextCfg.fim : 15;
+    const nextIni = newFim + 1;
+    const nextLabel = String(nextIni).padStart(2,'0') + '/' + nextOpt.value + ' - ' + String(nextFim).padStart(2,'0') + '/' + String((parseInt(nextOpt.value) % 12) + 1).padStart(2,'0');
+    nextOpt.textContent = nextLabel;
+    localStorage.setItem('ponto_periodo_' + nextOpt.value, JSON.stringify({ label: nextLabel, ini: nextIni, fim: nextFim }));
+  }
+  loadPeriodo();
 };
 
 // ─── Init ───

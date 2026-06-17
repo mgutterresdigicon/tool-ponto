@@ -13,7 +13,7 @@
 <!-- ══ LOGIN ══ -->
 <div id="screen-login">
   <h1>🕐 Controle de Ponto</h1>
-  <p style="opacity:.6;margin-bottom:20px">Registre e acompanhe suas horas de trabalho, de qualquer dispositivo.</p>
+  <p style="opacity:.6;margin-bottom:20px;text-align:center">Registre e acompanhe suas horas de trabalho, de qualquer dispositivo.</p>
   <button class="btn-google" onclick="doLogin()">
     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
     Entrar com Google
@@ -21,6 +21,7 @@
   <div id="access-denied" style="display:none" class="access-denied-box">
     🚫 Acesso não autorizado.
   </div>
+  <button id="btn-solicitar" onclick="solicitarAcesso()" style="display:none;margin-top:20px;opacity:.7;background:none;border:1px solid #444;color:#e0e0e0;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:13px">📩 Solicitar acesso</button>
 </div>
 
 <!-- ══ APP ══ -->
@@ -29,15 +30,20 @@
 <div class="user-bar">
   <img id="user-photo" src="" alt="">
   <span id="user-name"></span>
+  <button id="btn-admin" onclick="gerenciarUsuarios()" style="display:none">👥</button>
   <button onclick="doLogout()">Sair</button>
 </div>
 
 <h1>Controle de Ponto</h1>
 <div class="controls">
   <div class="group">
-    <label>Ano:</label>
-    <input type="number" id="anoCtrl" value="2026" min="2024" max="2050" style="width:80px">
-    <label>Período:</label>
+    <label for="anoCtrl">Ano:</label>
+    <button onclick="let a=document.getElementById('anoCtrl');a.value--;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">◀</button>
+    <input type="text" id="anoCtrl" value="2026" readonly style="width:55px;text-align:center;font-weight:bold;border:none;background:transparent;color:#00d4ff;font-size:15px;padding:0">
+    <button onclick="let a=document.getElementById('anoCtrl');a.value++;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">▶</button>
+  </div>
+  <div class="group">
+    <label for="selPeriodo">Período:</label>
     <select id="selPeriodo">
       <option value="01">16/01 - 15/02</option>
       <option value="02">16/02 - 15/03</option>
@@ -55,8 +61,8 @@
     <button onclick="editarPeriodo()">✏️</button>
   </div>
   <div class="group">
-    <label>Carga/Dia:</label>
-    <input type="text" id="cargaDia" value="08:48" style="width:70px">
+    <label for="cargaDia">Carga/Dia:</label>
+    <input type="time" id="cargaDia" value="08:48" style="width:110px">
     <button onclick="toggleBonusComp()">±Bônus/Comp</button>
   </div>
   <div class="group">

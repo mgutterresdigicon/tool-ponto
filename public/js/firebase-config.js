@@ -1,12 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-export const EMAILS_PERMITIDOS = [
-  "maicongutterres@gmail.com",
-  "mgutterres.digicon@gmail.com"
-  // Adicione outros e-mails autorizados aqui
-];
+// Admin é o primeiro email da lista (pode gerenciar usuários)
+export const ADMIN_EMAIL = "mgutterres.digicon@gmail.com";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCG7q025r8RFRoZmcJynFUMvpJGuGNAC6k",
@@ -22,3 +19,17 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
+
+// Carregar emails permitidos do Firestore
+export async function loadAllowedEmails() {
+  const snap = await getDoc(doc(db, "config", "allowed_emails"));
+  if (snap.exists()) return snap.data().emails || [];
+  // Inicializar com admin se não existir
+  const initial = [ADMIN_EMAIL];
+  await setDoc(doc(db, "config", "allowed_emails"), { emails: initial });
+  return initial;
+}
+
+export async function saveAllowedEmails(emails) {
+  await setDoc(doc(db, "config", "allowed_emails"), { emails });
+}
