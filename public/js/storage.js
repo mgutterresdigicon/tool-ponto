@@ -1,8 +1,10 @@
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase-config.js";
 import { state } from "./state.js";
 
 function getKey(ano, periodo) { return `${ano}_${periodo}`; }
+
+let activeListener = null;
 
 export async function savePeriodo(ano, periodo, rows) {
   const uid = state.currentUser?.uid;
@@ -24,6 +26,19 @@ export async function loadPeriodoData(ano, periodo) {
   }
   const raw = localStorage.getItem(`ponto${ano}_${periodo}`);
   return raw ? JSON.parse(raw) : null;
+}
+
+export function listenPeriodo(ano, periodo, onChange) {
+  if (activeListener) { activeListener(); activeListener = null; }
+  const uid = state.currentUser?.uid;
+  if (!uid) return;
+  activeListener = onSnapshot(doc(db, "pontos", uid, "periodos", getKey(ano, periodo)), (snap) => {
+    if (snap.exists()) {
+      const data = JSON.parse(snap.data().data);
+      localStorage.setItem(`ponto${ano}_${periodo}`, JSON.stringify(data));
+      if (onChange) onChange(data);
+    }
+  });
 }
 
 export async function saveSettings(settings) {

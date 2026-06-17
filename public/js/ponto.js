@@ -1,4 +1,4 @@
-import { savePeriodo, loadPeriodoData, saveSettings, loadSettings } from "./storage.js";
+import { savePeriodo, loadPeriodoData, listenPeriodo, saveSettings, loadSettings } from "./storage.js";
 import { modal } from "./modal.js";
 
 const tbody = document.getElementById('tbody');
@@ -251,6 +251,7 @@ window.salvar = async function() {
   localStorage.setItem(`ponto${ano}_${periodo}`, JSON.stringify(data));
   // Salvar todos os períodos de todos os anos no Firestore
   try {
+    window._saving = true;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       const match = k.match(/^ponto(\d{4})_(\d{2})$/);
@@ -259,8 +260,10 @@ window.salvar = async function() {
         await savePeriodo(match[1], match[2], rows);
       }
     }
+    window._saving = false;
     modal('✔ Salvo', 'Todos os dados salvos com sucesso!');
   } catch(e) {
+    window._saving = false;
     modal('⚠ Erro', 'Erro ao salvar: ' + e.message);
   }
 };
@@ -271,29 +274,40 @@ export async function loadPeriodo() {
   tbody.innerHTML = '';
   const data = await loadPeriodoData(ano, sel);
   if (data) {
-    data.forEach(v => {
-      const tr = addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
-      if (v[8] || v[9]) {
-        addTurno3(tr);
-        const t3inputs = tr.querySelectorAll('.turno3 input');
-        if (t3inputs[0]) t3inputs[0].value = v[8] || '';
-        if (t3inputs[1]) t3inputs[1].value = v[9] || '';
-        calcRow(tr);
-      }
-    });
-    return;
+    renderRows(data);
+  } else {
+    const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
+    const diaIni = cfg ? cfg.ini : 16;
+    const diaFim = cfg ? cfg.fim : 15;
+    const m1 = parseInt(sel) - 1, year = parseInt(ano);
+    for (let d = diaIni; d <= new Date(year, m1 + 1, 0).getDate(); d++) {
+      if (new Date(year, m1, d).getDay() % 6 !== 0) addRow(String(d));
+    }
+    const m2 = (m1 + 1) % 12, y2 = m1 === 11 ? year + 1 : year;
+    for (let d = 1; d <= diaFim; d++) {
+      if (new Date(y2, m2, d).getDay() % 6 !== 0) addRow(String(d));
+    }
   }
-  const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
-  const diaIni = cfg ? cfg.ini : 16;
-  const diaFim = cfg ? cfg.fim : 15;
-  const m1 = parseInt(sel) - 1, year = parseInt(ano);
-  for (let d = diaIni; d <= new Date(year, m1 + 1, 0).getDate(); d++) {
-    if (new Date(year, m1, d).getDay() % 6 !== 0) addRow(String(d));
-  }
-  const m2 = (m1 + 1) % 12, y2 = m1 === 11 ? year + 1 : year;
-  for (let d = 1; d <= diaFim; d++) {
-    if (new Date(y2, m2, d).getDay() % 6 !== 0) addRow(String(d));
-  }
+  // Escutar mudanças em tempo real
+  listenPeriodo(ano, sel, (newData) => {
+    if (!window._saving) {
+      tbody.innerHTML = '';
+      renderRows(newData);
+    }
+  });
+}
+
+function renderRows(data) {
+  data.forEach(v => {
+    const tr = addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
+    if (v[8] || v[9]) {
+      addTurno3(tr);
+      const t3inputs = tr.querySelectorAll('.turno3 input');
+      if (t3inputs[0]) t3inputs[0].value = v[8] || '';
+      if (t3inputs[1]) t3inputs[1].value = v[9] || '';
+      calcRow(tr);
+    }
+  });
 }
 
 // ─── Exportar ───
