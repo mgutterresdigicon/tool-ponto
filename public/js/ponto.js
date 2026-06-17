@@ -247,8 +247,12 @@ window.salvar = async function() {
     if (t3inputs.length) { row.push(t3inputs[0].value); row.push(t3inputs[1].value); }
     data.push(row);
   });
-  await savePeriodo(ano, periodo, data);
-  modal('✔ Salvo', 'Dados salvos com sucesso!');
+  try {
+    await savePeriodo(ano, periodo, data);
+    modal('✔ Salvo', 'Dados salvos com sucesso!');
+  } catch(e) {
+    modal('⚠ Erro', 'Erro ao salvar: ' + e.message);
+  }
 };
 
 export async function loadPeriodo() {
@@ -401,3 +405,5 @@ function tickOnMinute() {
   setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
 }
 setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
+
+window.loadPeriodo = loadPeriodo;

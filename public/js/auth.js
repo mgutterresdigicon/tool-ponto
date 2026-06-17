@@ -1,7 +1,6 @@
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { auth, provider, EMAILS_PERMITIDOS } from "./firebase-config.js";
 import { state } from "./state.js";
-import { loadPeriodo } from "./ponto.js";
 import { modal } from "./modal.js";
 
 window.doLogin = async () => {
@@ -26,6 +25,6 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     document.getElementById("user-name").textContent = user.displayName?.split(" ")[0] ?? "Você";
     document.getElementById("user-photo").src = user.photoURL ?? "";
-    await loadPeriodo();
+    if (window.loadPeriodo) await window.loadPeriodo();
   }
 });

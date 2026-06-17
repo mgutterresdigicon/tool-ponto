@@ -4,16 +4,17 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 
 export const EMAILS_PERMITIDOS = [
   "maicongutterres@gmail.com",
+  "mgutterres.digicon@gmail.com"
   // Adicione outros e-mails autorizados aqui
 ];
 
 const firebaseConfig = {
-  apiKey:            "SUA_API_KEY",
-  authDomain:        "SEU_PROJETO.firebaseapp.com",
-  projectId:         "SEU_PROJETO",
-  storageBucket:     "SEU_PROJETO.firebasestorage.app",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId:             "SEU_APP_ID"
+  apiKey: "AIzaSyCG7q025r8RFRoZmcJynFUMvpJGuGNAC6k",
+  authDomain: "tool-ponto.firebaseapp.com",
+  projectId: "tool-ponto",
+  storageBucket: "tool-ponto.firebasestorage.app",
+  messagingSenderId: "425959566307",
+  appId: "1:425959566307:web:c7d068cd24417a2e660ed6"
 };
 
 const app = initializeApp(firebaseConfig);

@@ -6,10 +6,10 @@ function getKey(ano, periodo) { return `${ano}_${periodo}`; }
 
 export async function savePeriodo(ano, periodo, rows) {
   const uid = state.currentUser?.uid;
-  if (uid) {
-    await setDoc(doc(db, "pontos", uid, "periodos", getKey(ano, periodo)), { rows });
-  }
   localStorage.setItem(`ponto${ano}_${periodo}`, JSON.stringify(rows));
+  if (uid) {
+    await setDoc(doc(db, "pontos", uid, "periodos", getKey(ano, periodo)), { data: JSON.stringify(rows) });
+  }
 }
 
 export async function loadPeriodoData(ano, periodo) {
@@ -17,7 +17,7 @@ export async function loadPeriodoData(ano, periodo) {
   if (uid) {
     const snap = await getDoc(doc(db, "pontos", uid, "periodos", getKey(ano, periodo)));
     if (snap.exists()) {
-      const data = snap.data().rows;
+      const data = JSON.parse(snap.data().data);
       localStorage.setItem(`ponto${ano}_${periodo}`, JSON.stringify(data));
       return data;
     }
