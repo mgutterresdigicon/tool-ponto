@@ -171,7 +171,7 @@ onAuthStateChanged(auth, async user => {
   document.getElementById("access-denied").style.display = "none";
   state.currentUser = user;
   document.getElementById("screen-login").style.display = user ? "none" : "flex";
-  document.getElementById("screen-app").style.display = user ? "block" : "none";
+  document.getElementById("screen-app").style.display = user ? "flex" : "none";
   if (user) {
     document.getElementById("user-name").textContent = user.displayName?.split(" ")[0] ?? "Você";
     document.getElementById("user-photo").src = user.photoURL ?? "";

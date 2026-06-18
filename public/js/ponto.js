@@ -235,6 +235,52 @@ window.updateSummary = function() {
   document.getElementById('sumAzure').textContent = sumAzure.toFixed(2);
 };
 
+// ─── Registrar Ponto ───
+window.registrarPonto = async function() {
+  const now = new Date();
+  const dia = String(now.getDate());
+  const hora = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+  // Encontrar a linha do dia atual
+  let tr = null;
+  tbody.querySelectorAll('tr').forEach(row => {
+    const inp = row.querySelectorAll('input[type="text"]');
+    if (inp[0].value === dia) tr = row;
+  });
+
+  if (!tr) {
+    modal('⚠ Aviso', 'Dia ' + dia + ' não encontrado na tabela.');
+    return;
+  }
+
+  const inp = tr.querySelectorAll('input[type="text"]');
+  // Campos: 0=Dia, 1=Bônus, 2=Carga, 3=Comp, 4=E1, 5=S1, 6=E2, 7=S2
+  let campo = null;
+  if (!inp[4].value) campo = inp[4];       // Entrada1
+  else if (!inp[5].value) campo = inp[5];  // Saída1
+  else if (!inp[6].value) campo = inp[6];  // Entrada2
+  else if (!inp[7].value) campo = inp[7];  // Saída2
+  else {
+    // Verificar turno 3
+    const t3inputs = tr.querySelectorAll('.turno3 input');
+    if (t3inputs.length) {
+      if (!t3inputs[0].value) campo = t3inputs[0];
+      else if (!t3inputs[1].value) campo = t3inputs[1];
+    }
+  }
+
+  if (!campo) {
+    modal('⚠ Aviso', 'Todos os campos do dia ' + dia + ' já estão preenchidos.');
+    return;
+  }
+
+  campo.value = hora;
+  campo.dispatchEvent(new Event('input'));
+
+  // Salvar automaticamente
+  await salvar();
+};
+
 // ─── Salvar / Carregar ───
 window.salvar = async function() {
   const ano = document.getElementById('anoCtrl').value;

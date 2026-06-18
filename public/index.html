@@ -6,7 +6,9 @@
 <title>Controle de Ponto</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
-<link rel="stylesheet" href="css/app.css">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<link rel="stylesheet" href="css/app.css?v=222">
 </head>
 <body>
 
@@ -27,112 +29,100 @@
 <!-- ══ APP ══ -->
 <div id="screen-app">
 
-<div class="user-bar">
-  <img id="user-photo" src="" alt="">
-  <span id="user-name"></span>
-  <button id="btn-admin" onclick="gerenciarUsuarios()" style="display:none">👥</button>
-  <button onclick="doLogout()">Sair</button>
-</div>
+<div class="app-top">
+  <div class="user-bar">
+    <img id="user-photo" src="" alt="">
+    <span id="user-name"></span>
+    <span id="app-version" style="opacity:.4;font-size:11px"></span>
+    <button class="btn-refresh" onclick="location.reload()">🔄</button>
+    <button id="btn-admin" onclick="gerenciarUsuarios()" style="display:none">👥</button>
+    <button onclick="doLogout()">Sair</button>
+  </div>
 
-<h1>Controle de Ponto</h1>
-<div class="controls">
-  <div class="group">
-    <label for="anoCtrl">Ano:</label>
-    <button onclick="let a=document.getElementById('anoCtrl');a.value--;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">◀</button>
-    <input type="text" id="anoCtrl" value="2026" readonly style="width:55px;text-align:center;font-weight:bold;border:none;background:transparent;color:#00d4ff;font-size:15px;padding:0">
-    <button onclick="let a=document.getElementById('anoCtrl');a.value++;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">▶</button>
-  </div>
-  <div class="group">
-    <label for="selPeriodo">Período:</label>
-    <select id="selPeriodo">
-      <option value="01">16/01 - 15/02</option>
-      <option value="02">16/02 - 15/03</option>
-      <option value="03">16/03 - 15/04</option>
-      <option value="04">16/04 - 15/05</option>
-      <option value="05">16/05 - 15/06</option>
-      <option value="06">16/06 - 15/07</option>
-      <option value="07">16/07 - 15/08</option>
-      <option value="08">16/08 - 15/09</option>
-      <option value="09">16/09 - 15/10</option>
-      <option value="10">16/10 - 15/11</option>
-      <option value="11">16/11 - 15/12</option>
-      <option value="12">16/12 - 15/01</option>
-    </select>
-    <button onclick="editarPeriodo()">✏️</button>
-  </div>
-  <div class="group">
-    <label for="cargaDia">Carga/Dia:</label>
-    <input type="time" id="cargaDia" value="08:48" style="width:110px">
-    <button onclick="toggleBonusComp()">±Bônus/Comp</button>
-  </div>
-  <div class="group">
+  <h1>Controle de Ponto</h1>
+  <div class="sticky-buttons">
+    <button onclick="registrarPonto()" style="background:#27ae60">⏱ Registrar</button>
     <button onclick="salvar()">💾 Salvar</button>
-    <button id="btnExport">CSV</button>
-    <button onclick="exportJSON()">⬇ JSON</button>
-    <button onclick="document.getElementById('jsonInput').click()">⬆ JSON</button>
-    <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
+    <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')">📁</button>
+  </div>
+  <div class="controls">
+    <div class="group">
+      <label for="anoCtrl">Ano:</label>
+      <button onclick="let a=document.getElementById('anoCtrl');a.value--;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">◀</button>
+      <input type="text" id="anoCtrl" value="2026" readonly style="width:55px;text-align:center;font-weight:bold;border:none;background:transparent;color:#00d4ff;font-size:15px;padding:0">
+      <button onclick="let a=document.getElementById('anoCtrl');a.value++;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">▶</button>
+    </div>
+    <div class="group">
+      <label for="selPeriodo">Período:</label>
+      <select id="selPeriodo">
+        <option value="01">16/01 - 15/02</option>
+        <option value="02">16/02 - 15/03</option>
+        <option value="03">16/03 - 15/04</option>
+        <option value="04">16/04 - 15/05</option>
+        <option value="05">16/05 - 15/06</option>
+        <option value="06">16/06 - 15/07</option>
+        <option value="07">16/07 - 15/08</option>
+        <option value="08">16/08 - 15/09</option>
+        <option value="09">16/09 - 15/10</option>
+        <option value="10">16/10 - 15/11</option>
+        <option value="11">16/11 - 15/12</option>
+        <option value="12">16/12 - 15/01</option>
+      </select>
+      <button onclick="editarPeriodo()">✏️</button>
+    </div>
+    <div class="group">
+      <label for="cargaDia">Carga/Dia:</label>
+      <input type="time" id="cargaDia" value="08:48" style="width:110px">
+      <button onclick="toggleBonusComp()">±Bônus/Comp</button>
+    </div>
+    <div class="group group-export">
+      <button id="btnExport">CSV</button>
+      <button onclick="exportJSON()">⬇ JSON</button>
+      <button onclick="document.getElementById('jsonInput').click()">⬆ JSON</button>
+      <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
   </div>
 </div>
 
-<div style="overflow-x:auto">
-<table>
-<thead>
-<tr>
-  <th></th>
-  <th></th>
-  <th></th>
-  <th class="col-bc"></th>
-  <th></th>
-  <th class="col-bc"></th>
-  <th></th>
-  <th></th>
-  <th></th>
-  <th></th>
-  <th></th>
-  <th></th>
-  <th class="col-t3"></th>
-  <th class="col-t3"></th>
-  <th class="col-t3"></th>
-  <th colspan="2" style="background:#2c1a0e;color:#ff9800">Saída</th>
-  <th></th>
-  <th></th>
-  <th></th>
-</tr>
-<tr>
-  <th><button class="row-btn" onclick="addRow('','','','','','','','',document.getElementById('tbody').firstElementChild)" title="Adicionar linha">+</button></th>
-  <th>Dia</th>
-  <th>Sem</th>
-  <th class="col-bc">Bônus</th>
-  <th>Carga</th>
-  <th class="col-bc">Comp.</th>
-  <th>Entrada 1</th>
-  <th>Saída 1</th>
-  <th>Total 1</th>
-  <th>Entrada 2</th>
-  <th>Saída 2</th>
-  <th>Total 2</th>
-  <th class="col-t3">Entrada 3</th>
-  <th class="col-t3">Saída 3</th>
-  <th class="col-t3">Total 3</th>
-  <th style="color:#ff9800">Normal</th>
-  <th style="color:#e74c3c">Extra</th>
-  <th>Azure</th>
-  <th>Total</th>
-  <th>Hora-Extra</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
+<div class="app-middle">
+  <table>
+  <thead>
+  <tr>
+    <th><button class="row-btn" onclick="addRow('','','','','','','','',document.getElementById('tbody').firstElementChild)" title="Adicionar linha">+</button></th>
+    <th>Dia</th>
+    <th>Sem</th>
+    <th class="col-bc">Bônus</th>
+    <th>Carga</th>
+    <th class="col-bc">Comp.</th>
+    <th>Entrada 1</th>
+    <th>Saída 1</th>
+    <th>Total 1</th>
+    <th>Entrada 2</th>
+    <th>Saída 2</th>
+    <th>Total 2</th>
+    <th class="col-t3">Entrada 3</th>
+    <th class="col-t3">Saída 3</th>
+    <th class="col-t3">Total 3</th>
+    <th style="color:#ff9800"><small style="display:block;opacity:.6;font-size:10px">Saída</small>Normal</th>
+    <th style="color:#e74c3c"><small style="display:block;opacity:.6;font-size:10px">Saída</small>Extra</th>
+    <th>Azure</th>
+    <th>Total</th>
+    <th>Hora-Extra</th>
+  </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+  </table>
 </div>
 
-<div class="summary">
-  <span>Carga Total: <b id="sumCarga">00:00</b></span>
-  <span>Carga Parcial: <b id="sumCargaParcial">00:00</b></span>
-  <span>Azure Total: <b id="sumAzure">0.00</b></span>
-  <span>Trabalhado: <b id="sumTrab">00:00</b></span>
-  <span>Hora-Extra: <b id="sumHE">00:00</b></span>
+<div class="app-bottom">
+  <div class="summary">
+    <span>Carga Total: <b id="sumCarga">00:00</b></span>
+    <span>Carga Parcial: <b id="sumCargaParcial">00:00</b></span>
+    <span>Azure Total: <b id="sumAzure">0.00</b></span>
+    <span>Trabalhado: <b id="sumTrab">00:00</b></span>
+    <span>Hora-Extra: <b id="sumHE">00:00</b></span>
+  </div>
 </div>
-<div style="text-align:center;margin-top:15px;opacity:.4;font-size:12px">v2.0.0</div>
 
 </div><!-- /screen-app -->
 
@@ -150,6 +140,7 @@
 </div>
 
 <!-- JS Modules -->
+<script>fetch('VERSION').then(r=>r.text()).then(v=>document.getElementById('app-version').textContent='v'+v.trim())</script>
 <script type="module" src="js/auth.js"></script>
 <script type="module" src="js/ponto.js"></script>
 </body>

@@ -1,61 +1,67 @@
-# 🕐 Controle de Ponto — Guia de Instalação
+# 🕐 Controle de Ponto
 
-## O que você vai precisar
-- Uma conta Google (gratuita)
-- Firebase CLI instalado (`npm install -g firebase-tools`)
-- ~15 minutos para configurar
-
----
+Ferramenta web para registro e controle de horário de trabalho, com sincronização via Firebase.
 
 ## Estrutura do Projeto
 
 ```
 tool-ponto/
 ├── public/
-│   ├── index.html              # HTML estrutural (frontend)
+│   ├── index.html              # Frontend (login + tabela de ponto)
+│   ├── VERSION                 # Arquivo de versão
 │   ├── css/
 │   │   └── app.css             # Estilos
 │   └── js/
 │       ├── firebase-config.js  # Config Firebase + EMAILS_PERMITIDOS
-│       ├── auth.js             # Login/logout Google
+│       ├── auth.js             # Login/logout Google + gerenciamento de usuários
 │       ├── state.js            # Estado global
 │       ├── modal.js            # Modal customizado (alert/confirm/prompt)
-│       ├── storage.js          # Camada de persistência (Firestore + localStorage)
+│       ├── storage.js          # Persistência (Firestore + localStorage + realtime)
 │       └── ponto.js            # Lógica principal (cálculos, UI, exportação)
-├── ponto.html                  # Versão standalone (sem Firebase, localStorage only)
-├── deploy.sh                   # Deploy Linux
+├── standalone/
+│   └── ponto.html              # Versão offline (sem Firebase, localStorage only)
+├── tools/
+│   └── deploy.sh              # Script de deploy
 ├── firebase.json
 ├── .firebaserc
+├── CHANGELOG.md
 └── README.md
 ```
 
----
+## Pré-requisitos
 
-## Passo 1 — Criar o projeto Firebase
+- Uma conta Google (gratuita)
+- Firebase CLI (`npm install -g firebase-tools`)
+
+## Configuração do Firebase
+
+### 1. Criar o projeto
 
 1. Acesse **https://console.firebase.google.com**
-2. Clique em **"Adicionar projeto"**
-3. Dê um nome (ex: `controle-ponto`) → Avançar → Criar projeto
+2. Crie um projeto (ex: `tool-ponto`)
 
----
+### 2. Ativar Autenticação com Google
 
-## Passo 2 — Ativar Autenticação com Google
+1. Autenticação → Método de login → Google → Ativar
 
-1. No menu lateral: **Autenticação** → **Primeiros passos**
-2. Na aba **Método de login**, clique em **Google** → ative → Salvar
+### 3. Criar Firestore
 
----
-
-## Passo 3 — Criar o banco de dados (Firestore)
-
-1. No menu lateral: **Firestore Database** → **Criar banco de dados**
-2. Escolha **Modo de produção** → Avançar → Localização: `southamerica-east1` → Ativar
-3. Vá em **Regras** e substitua por:
+1. Firestore Database → Criar banco de dados → Modo de produção
+2. Localização: `southamerica-east1`
+3. Publicar as regras:
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /config/allowed_emails {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'SEU_EMAIL_ADMIN';
+    }
+    match /solicitacoes/{email} {
+      allow create: if true;
+      allow read, delete: if request.auth != null && request.auth.token.email == 'SEU_EMAIL_ADMIN';
+    }
     match /pontos/{uid}/periodos/{docId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -66,102 +72,55 @@ service cloud.firestore {
 }
 ```
 
-4. Clique em **Publicar**
-
----
-
-## Passo 4 — Pegar as credenciais do app
-
-1. Na página inicial do projeto, clique no ícone **`</>`** (Web)
-2. Dê um apelido (ex: `ponto-web`) → Registrar app
-3. Copie o objeto `firebaseConfig`
-
----
-
-## Passo 5 — Configurar o app
+### 4. Configurar credenciais
 
 Edite `public/js/firebase-config.js`:
-
-1. Substitua o `firebaseConfig` pelos valores do Passo 4
-2. Edite a lista `EMAILS_PERMITIDOS` com os e-mails Google autorizados
+- Substitua o `firebaseConfig` com os valores do projeto
+- Defina o `ADMIN_EMAIL`
 
 Edite `firebase.json` e `.firebaserc`:
-- Substitua `SEU_PROJETO_ID` pelo ID do projeto criado no Passo 1
+- Substitua `tool-ponto` pelo ID do seu projeto (se diferente)
 
----
-
-## Passo 6 — Ativar Firebase Hosting
+### 5. Deploy
 
 ```bash
 firebase login
-firebase deploy
+./tools/deploy.sh
 ```
 
-Ou use o script:
-```bash
-./deploy.sh
-```
-
-A URL será algo como: `https://SEU_PROJETO.web.app`
-
----
-
-## Estrutura de dados no Firestore
-
-```
-firestore/
-├── pontos/
-│   └── {uid}/                    # isolado por usuário
-│       └── periodos/
-│           └── {ano_mes}         # ex: "2026_05"
-│               └── rows: [       # array de registros diários
-│                   [dia, bonus, carga, comp, e1, s1, e2, s2, e3?, s3?],
-│                   ...
-│               ]
-│
-└── config/
-    └── {uid}/
-        └── data/
-            └── ponto_settings
-                ├── cargaDia: "08:48"
-                └── periodos: { "05": {label, ini, fim}, ... }
-```
-
----
-
-## Desenvolvimento
-
-- Edite os arquivos em `public/` diretamente
-- Teste local: `firebase serve --only hosting` → `http://localhost:5000`
-- Sem etapa de build — HTML/CSS/JS puro com ES modules
-- A versão standalone `ponto.html` (raiz) funciona sem Firebase (localStorage only)
-
----
+URL: `https://SEU_PROJETO.web.app`
 
 ## Funcionalidades
 
 | Função | Descrição |
 |--------|-----------|
-| 🔐 Login Google | Acesso restrito por lista de e-mails |
+| 🔐 Login Google | Acesso restrito com gerenciamento de usuários |
+| 📩 Solicitação | Novos usuários podem solicitar acesso |
+| 👥 Admin | Aprovar/rejeitar solicitações, adicionar/remover emails |
+| ⏱ Registrar | Marca ponto com hora atual no próximo campo disponível |
 | 📅 Períodos | Configuráveis (padrão 16/mês a 15/mês+1) |
 | ⏱️ Turnos | Até 3 turnos por dia (turno 3 sob demanda) |
 | 📊 Cálculos | Total, Azure (decimal), Hora-Extra com tolerância 6min |
-| 🕐 Tempo real | Usa hora atual como saída provisória |
-| 💾 Firebase | Dados sincronizados na nuvem |
+| 🕐 Tempo real | Usa hora atual como saída provisória, atualiza a cada minuto |
+| 🔄 Sync | Sincronização em tempo real entre dispositivos |
+| 💾 Firebase | Dados na nuvem por usuário |
 | 📁 Backup JSON | Exporta/importa todos os períodos |
 | 📄 CSV | Exporta para Excel |
 
----
+## Desenvolvimento
 
-## Versão
+```bash
+firebase serve --only hosting
+```
 
-Atual: **v2.0.0**
+Acesse `http://localhost:5000`. Sem etapa de build — HTML/CSS/JS puro com ES modules.
 
----
+## Versionamento
+
+Este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
+A versão é controlada pelo arquivo `public/VERSION`.
+Veja o histórico completo em [CHANGELOG.md](CHANGELOG.md).
 
 ## Custo
 
-**Totalmente gratuito** dentro do Firebase Free Tier:
-- 50.000 leituras/dia
-- 20.000 escritas/dia
-- 1 GB armazenamento
+Totalmente gratuito dentro do Firebase Free Tier (50k leituras/dia, 20k escritas/dia, 1GB armazenamento).
