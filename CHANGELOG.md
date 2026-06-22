@@ -5,7 +5,16 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-06-18
+## [Não publicado] - 2026-06-22
+
+## [2.1.1] - 2026-06-22
+
+### Modificado
+
+- Períodos sem dados salvos geram linhas apenas até o dia atual (dias futuros vazios não aparecem)
+- Ao carregar dados salvos, linhas de dias futuros sem dados preenchidos são filtradas
+- Novo dia é adicionado automaticamente à meia-noite (se for dia útil)
+- Linhas adicionadas manualmente pelo usuário são sempre preservadas
 
 ### Adicionado
 
@@ -68,7 +77,8 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 - Armazenamento em localStorage
 - Exportação CSV
 
-[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/main...HEAD
+[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.0...v2.1.1
 [2.0.0]: https://github.com/mgutterresdigicon/tool-ponto/releases/tag/v2.0.0
 [1.0.1]: https://github.com/mgutterresdigicon/tool-ponto/releases/tag/v1.0.1
 [1.0.0]: https://github.com/mgutterresdigicon/tool-ponto/releases/tag/v1.0.0

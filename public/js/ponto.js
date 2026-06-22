@@ -326,12 +326,18 @@ export async function loadPeriodo() {
     const diaIni = cfg ? cfg.ini : 16;
     const diaFim = cfg ? cfg.fim : 15;
     const m1 = parseInt(sel) - 1, year = parseInt(ano);
+    const today = new Date();
+    today.setHours(0,0,0,0);
     for (let d = diaIni; d <= new Date(year, m1 + 1, 0).getDate(); d++) {
-      if (new Date(year, m1, d).getDay() % 6 !== 0) addRow(String(d));
+      const dt = new Date(year, m1, d);
+      if (dt > today) break;
+      if (dt.getDay() % 6 !== 0) addRow(String(d));
     }
     const m2 = (m1 + 1) % 12, y2 = m1 === 11 ? year + 1 : year;
     for (let d = 1; d <= diaFim; d++) {
-      if (new Date(y2, m2, d).getDay() % 6 !== 0) addRow(String(d));
+      const dt = new Date(y2, m2, d);
+      if (dt > today) break;
+      if (dt.getDay() % 6 !== 0) addRow(String(d));
     }
   }
   // Escutar mudanças em tempo real
@@ -344,7 +350,24 @@ export async function loadPeriodo() {
 }
 
 function renderRows(data) {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const sel = document.getElementById('selPeriodo').value;
+  const ano = parseInt(document.getElementById('anoCtrl').value);
+  const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
+  const diaIni = cfg ? cfg.ini : 16;
+  const m1 = parseInt(sel) - 1;
+
   data.forEach(v => {
+    // Verificar se é dia futuro sem dados
+    const diaNum = parseInt(v[0]);
+    if (diaNum) {
+      const mes = diaNum >= diaIni ? m1 : (m1 + 1) % 12;
+      const y = (diaNum < diaIni && m1 === 11) ? ano + 1 : ano;
+      const dt = new Date(y, mes, diaNum);
+      const hasData = v.slice(1).some(val => val && val !== '08:48');
+      if (dt > today && !hasData) return; // pular dia futuro vazio
+    }
     const tr = addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
     if (v[8] || v[9]) {
       addTurno3(tr);
@@ -511,8 +534,19 @@ const now = new Date();
 sel.value = now.getDate() >= 16 ? String(now.getMonth() + 1).padStart(2, '0') : String(now.getMonth() || 12).padStart(2, '0');
 
 // Tick a cada minuto
+let _lastDay = new Date().getDate();
 function tickOnMinute() {
   tbody.querySelectorAll('tr').forEach(calcRow);
+  // Ao virar meia-noite, adicionar o novo dia se for dia útil e período atual
+  const now = new Date();
+  if (now.getDate() !== _lastDay) {
+    _lastDay = now.getDate();
+    if (now.getDay() % 6 !== 0) {
+      const dia = String(now.getDate());
+      const exists = Array.from(tbody.querySelectorAll('tr')).some(tr => tr.querySelectorAll('input[type="text"]')[0].value === dia);
+      if (!exists) addRow(dia);
+    }
+  }
   setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
 }
 setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
