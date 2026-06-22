@@ -53,6 +53,7 @@ thead tr:first-child th { border-top: 1px solid #333; }
 th { background: #0f3460; color: #00d4ff; position: sticky; top: 0; }
 td input[type="text"] { width: 55px; text-align: center; background: #16213e; color: #e0e0e0; border: 1px solid #444; border-radius: 3px; padding: 2px; font-size: 13px; }
 td input[readonly] { background: transparent; border-color: transparent; color: #7fdbff; }
+.calc-input { color: #7fdbff !important; font-weight: bold; }
 td input:focus { border-color: #00d4ff; outline: none; }
 .calc { color: #7fdbff; font-weight: bold; }
 .col-bc { display: none; }

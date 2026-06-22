@@ -34,16 +34,17 @@
     <img id="user-photo" src="" alt="">
     <span id="user-name"></span>
     <span id="app-version" style="opacity:.4;font-size:11px"></span>
-    <button class="btn-refresh" onclick="location.reload()">🔄</button>
-    <button id="btn-admin" onclick="gerenciarUsuarios()" style="display:none">👥</button>
-    <button onclick="doLogout()">Sair</button>
+    <button class="btn-refresh" onclick="location.reload()" title="Atualizar página">🔄</button>
+    <button id="btn-admin" onclick="gerenciarUsuarios()" style="display:none" title="Gerenciar usuários autorizados">👥</button>
+    <button onclick="doLogout()" title="Sair da conta">Sair</button>
   </div>
 
   <h1>Controle de Ponto</h1>
   <div class="sticky-buttons">
-    <button onclick="registrarPonto()" style="background:#27ae60">⏱ Registrar</button>
-    <button onclick="salvar()">💾 Salvar</button>
-    <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')">📁</button>
+    <button onclick="registrarPonto()" style="background:#27ae60" title="Registrar hora atual no próximo campo disponível">⏱ Registrar</button>
+    <button onclick="salvar()" title="Salvar todos os dados no servidor">💾 Salvar</button>
+    <button onclick="toggleDias()" title="Mostrar/ocultar dias anteriores">📋</button>
+    <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')" title="Opções de exportação">📁</button>
   </div>
   <div class="controls">
     <div class="group">
@@ -68,17 +69,17 @@
         <option value="11">16/11 - 15/12</option>
         <option value="12">16/12 - 15/01</option>
       </select>
-      <button onclick="editarPeriodo()">✏️</button>
+      <button onclick="editarPeriodo()" title="Editar datas do período">✏️</button>
     </div>
     <div class="group">
       <label for="cargaDia">Carga/Dia:</label>
       <input type="time" id="cargaDia" value="08:48" style="width:110px">
-      <button onclick="toggleBonusComp()">±Bônus/Comp</button>
+      <button onclick="toggleBonusComp()" title="Mostrar/ocultar colunas Bônus e Compensação">±Bônus/Comp</button>
     </div>
     <div class="group group-export">
-      <button id="btnExport">CSV</button>
-      <button onclick="exportJSON()">⬇ JSON</button>
-      <button onclick="document.getElementById('jsonInput').click()">⬆ JSON</button>
+      <button id="btnExport" title="Exportar período como CSV">CSV</button>
+      <button onclick="exportJSON()" title="Baixar backup JSON de todos os períodos">⬇ JSON</button>
+      <button onclick="document.getElementById('jsonInput').click()" title="Importar backup JSON">⬆ JSON</button>
       <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
     </div>
   </div>

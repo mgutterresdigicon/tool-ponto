@@ -57,10 +57,10 @@ window.addTurno3 = function(tr) {
   const t2td = s2td.nextElementSibling;
   const e3td = document.createElement('td');
   e3td.className = 'turno3';
-  e3td.innerHTML = '<input type="text" placeholder="HH:MM" style="width:55px">';
+  e3td.innerHTML = '<input type="text" style="width:55px">';
   const s3td = document.createElement('td');
   s3td.className = 'turno3';
-  s3td.innerHTML = '<input type="text" placeholder="HH:MM" style="width:55px">';
+  s3td.innerHTML = '<input type="text" style="width:55px">';
   const t3td = document.createElement('td');
   t3td.className = 'turno3 calc';
   t2td.after(e3td, s3td, t3td);
@@ -152,17 +152,17 @@ window.addRow = function(dia = '', bonus = '', carga = '', comp = '', e1 = '', s
   if (!carga) carga = document.getElementById('cargaDia').value;
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><button class="row-btn" onclick="addRow('','','','','','','','',this.closest('tr').nextElementSibling)" title="Adicionar linha abaixo">+</button><button class="row-btn btn-del" onclick="this.closest('tr').remove();updateSummary()" title="Remover linha">✕</button><button class="row-btn" onclick="addTurno3(this.closest('tr'))" title="Adicionar/remover turno 3">³</button></td>
+    <td><button class="row-btn" onclick="addRow('','','','','','','','',this.closest('tr').nextElementSibling)" title="Adicionar linha abaixo">+</button><button class="row-btn btn-del" onclick="removerLinha(this.closest('tr'))" title="Remover linha">✕</button><button class="row-btn" onclick="addTurno3(this.closest('tr'))" title="Adicionar/remover turno 3">³</button></td>
     <td><input type="text" value="${dia}" placeholder="DD" style="width:35px"></td>
     <td class="dia-sem"></td>
     <td class="col-bc"><input type="text" value="${bonus}" style="width:45px"></td>
-    <td><input type="text" value="${carga}" style="width:55px" readonly tabindex="-1"></td>
+    <td><input type="text" value="${carga}" style="width:55px" readonly tabindex="-1" class="calc-input"></td>
     <td class="col-bc"><input type="text" value="${comp}" style="width:45px"></td>
-    <td><input type="text" value="${e1}" placeholder="HH:MM"></td>
-    <td><input type="text" value="${s1}" placeholder="HH:MM"></td>
+    <td><input type="text" value="${e1}"></td>
+    <td><input type="text" value="${s1}"></td>
     <td class="calc"></td>
-    <td><input type="text" value="${e2}" placeholder="HH:MM"></td>
-    <td><input type="text" value="${s2}" placeholder="HH:MM"></td>
+    <td><input type="text" value="${e2}"></td>
+    <td><input type="text" value="${s2}"></td>
     <td class="calc"></td>
     <td class="calc"></td>
     <td class="calc"></td>
@@ -233,6 +233,25 @@ window.updateSummary = function() {
   document.getElementById('sumHE').textContent = minToStr(sumHE);
   document.getElementById('sumHE').className = sumHE >= 0 ? 'positive' : 'negative';
   document.getElementById('sumAzure').textContent = sumAzure.toFixed(2);
+};
+
+// ─── Toggle Dias ───
+let _showAllDays = false;
+window.toggleDias = function() {
+  _showAllDays = !_showAllDays;
+  applyDaysFilter();
+};
+
+// ─── Remover Linha ───
+window.removerLinha = async function(tr) {
+  const inputs = tr.querySelectorAll('input[type="text"]');
+  const hasData = Array.from(inputs).slice(3).some(i => i.value.trim() !== '');
+  if (hasData) {
+    const ok = await modal('⚠ Confirmação', 'Deseja remover o dia ' + inputs[0].value + '?', {confirm: true});
+    if (!ok) return;
+  }
+  tr.remove();
+  updateSummary();
 };
 
 // ─── Registrar Ponto ───
@@ -345,7 +364,18 @@ export async function loadPeriodo() {
     if (!window._saving) {
       tbody.innerHTML = '';
       renderRows(newData);
+      applyDaysFilter();
     }
+  });
+  applyDaysFilter();
+}
+
+function applyDaysFilter() {
+  const today = String(new Date().getDate());
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const dia = tr.querySelectorAll('input[type="text"]')[0].value;
+    if (dia === today) { tr.style.display = ''; return; }
+    tr.style.display = _showAllDays ? '' : 'none';
   });
 }
 
