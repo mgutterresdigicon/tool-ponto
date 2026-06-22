@@ -31,7 +31,12 @@ h1 { text-align: center; margin-bottom: 10px; color: #00d4ff; }
 
 .btn-toggle-export { display: inline-block; }
 .btn-refresh { display: none; opacity: .6; font-size: 12px; background: none; border: none; cursor: pointer; }
-.sticky-buttons { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.btn-refresh.pulse { animation: pulse-update 1.5s infinite; opacity: 1; border-radius: 4px; }
+@keyframes pulse-update {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+  50% { box-shadow: 0 0 12px 4px rgba(46, 204, 113, 0.8); }
+}
+.sticky-buttons { display: flex; gap: 8px; justify-content: center; width: 100%; }
 .sticky-buttons button { padding: 6px 12px; border-radius: 4px; border: 1px solid #444; background: #0f3460; color: #e0e0e0; font-size: 14px; cursor: pointer; }
 .sticky-buttons button:hover { background: #1a5276; }
 .group.group-export { display: none !important; }

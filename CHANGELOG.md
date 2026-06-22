@@ -7,6 +7,18 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado] - 2026-06-22
 
+## [2.2.1] - 2026-06-22
+
+### Adicionado
+
+- Verificação automática de nova versão a cada 60s (compara arquivo VERSION)
+- Botão 🔄 com pulso verde quando há atualização disponível
+- Texto "Mostrar linhas" no botão de toggle de dias
+
+### Modificado
+
+- Bloco de botões (Registrar, Salvar, etc.) movido para após Carga/Bônus em nova linha
+
 ## [2.2.0] - 2026-06-22
 
 ### Adicionado
@@ -92,7 +104,8 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 - Armazenamento em localStorage
 - Exportação CSV
 
-[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.0...HEAD
+[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.1...HEAD
+[2.2.1]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.0...v2.1.1
 [2.0.0]: https://github.com/mgutterresdigicon/tool-ponto/releases/tag/v2.0.0

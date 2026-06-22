@@ -40,12 +40,6 @@
   </div>
 
   <h1>Controle de Ponto</h1>
-  <div class="sticky-buttons">
-    <button onclick="registrarPonto()" style="background:#27ae60" title="Registrar hora atual no próximo campo disponível">⏱ Registrar</button>
-    <button onclick="salvar()" title="Salvar todos os dados no servidor">💾 Salvar</button>
-    <button onclick="toggleDias()" title="Mostrar/ocultar dias anteriores">📋</button>
-    <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')" title="Opções de exportação">📁</button>
-  </div>
   <div class="controls">
     <div class="group">
       <label for="anoCtrl">Ano:</label>
@@ -75,6 +69,12 @@
       <label for="cargaDia">Carga/Dia:</label>
       <input type="time" id="cargaDia" value="08:48" style="width:110px">
       <button onclick="toggleBonusComp()" title="Mostrar/ocultar colunas Bônus e Compensação">±Bônus/Comp</button>
+    </div>
+    <div class="sticky-buttons">
+      <button onclick="registrarPonto()" style="background:#27ae60" title="Registrar hora atual no próximo campo disponível">⏱ Registrar</button>
+      <button onclick="salvar()" title="Salvar todos os dados no servidor">💾 Salvar</button>
+      <button onclick="toggleDias()" title="Mostrar/ocultar dias anteriores">📋 Mostrar linhas</button>
+      <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')" title="Opções de exportação">📁</button>
     </div>
     <div class="group group-export">
       <button id="btnExport" title="Exportar período como CSV">CSV</button>
@@ -141,7 +141,24 @@
 </div>
 
 <!-- JS Modules -->
-<script>fetch('VERSION').then(r=>r.text()).then(v=>document.getElementById('app-version').textContent='v'+v.trim())</script>
+<script>
+let _appVersion = null;
+fetch('VERSION').then(r=>r.text()).then(v=>{
+  _appVersion = v.trim();
+  document.getElementById('app-version').textContent='v'+_appVersion;
+});
+// Verificar atualização a cada 60s
+setInterval(async()=>{
+  try {
+    const r = await fetch('VERSION?t='+Date.now());
+    const v = (await r.text()).trim();
+    if (_appVersion && v !== _appVersion) {
+      const btn = document.querySelector('.btn-refresh');
+      if (btn) { btn.classList.add('pulse'); btn.style.display = 'inline-block'; btn.title = 'Nova versão disponível! Clique para atualizar'; }
+    }
+  } catch(e){}
+}, 60000);
+</script>
 <script type="module" src="js/auth.js"></script>
 <script type="module" src="js/ponto.js"></script>
 </body>
