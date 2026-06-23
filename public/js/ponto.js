@@ -364,10 +364,21 @@ export async function loadPeriodo() {
     if (!window._saving) {
       tbody.innerHTML = '';
       renderRows(newData);
+      ensureToday();
       applyDaysFilter();
     }
   });
+  ensureToday();
   applyDaysFilter();
+}
+
+function ensureToday() {
+  const now = new Date();
+  if (now.getDay() % 6 !== 0) {
+    const today = String(now.getDate());
+    const exists = Array.from(tbody.querySelectorAll('tr')).some(tr => tr.querySelectorAll('input[type="text"]')[0].value === today);
+    if (!exists) addRow(today);
+  }
 }
 
 function applyDaysFilter() {

@@ -5,7 +5,14 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-06-22
+## [Não publicado] - 2026-06-23
+
+## [2.2.2] - 2026-06-23
+
+### Corrigido
+
+- Dia atual agora é garantido na tabela após carga de dados e após sync realtime
+- Dia atual não desaparece mais quando o listener do Firestore atualiza a tabela
 
 ## [2.2.1] - 2026-06-22
 
@@ -104,7 +111,8 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 - Armazenamento em localStorage
 - Exportação CSV
 
-[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.1...HEAD
+[Não publicado]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/mgutterresdigicon/tool-ponto/compare/v2.1.0...v2.1.1
