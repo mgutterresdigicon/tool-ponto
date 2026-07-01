@@ -125,8 +125,9 @@ function calcRow(tr) {
   let normal = null, extra = null, he = null;
   if (e1 != null) {
     const intervalo = (e2 != null && s1 != null) ? e2 - s1 : 60;
-    normal = e1 + carga + intervalo;
-    extra = e1 + 600 + intervalo;
+    const intervalo2 = (e3 != null && s2 != null) ? e3 - s2 : 0;
+    normal = e1 + carga + intervalo + intervalo2;
+    extra = e1 + 600 + intervalo + intervalo2;
   }
   if (total != null) { const diff = total - carga; he = Math.abs(diff) >= 6 ? diff : 0; }
 

@@ -5,7 +5,13 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-06-23
+## [Não publicado] - 2026-07-01
+
+## [2.2.4] - 2026-07-01
+
+### Corrigido
+
+- Horários de saída agora somam intervalo2, quando entrada do turno 3 for adicionado.
 
 ## [2.2.3] - 2026-06-23
 
