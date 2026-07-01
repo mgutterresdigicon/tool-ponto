@@ -7,6 +7,12 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado] - 2026-07-01
 
+## [2.2.5] - 2026-07-01
+
+### Corrigido
+
+- Ajuste de visualização das linhas quando turno3 estiver habilitado em alguma linha.
+
 ## [2.2.4] - 2026-07-01
 
 ### Corrigido

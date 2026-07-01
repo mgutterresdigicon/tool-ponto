@@ -48,7 +48,6 @@ window.addTurno3 = function(tr) {
   if (tr.querySelector('.turno3')) {
     tr.querySelectorAll('.turno3').forEach(el => el.remove());
     calcRow(tr);
-    updateT3Visibility();
     return;
   }
   tr.querySelectorAll('.t3-placeholder').forEach(el => el.remove());
@@ -79,7 +78,6 @@ window.addTurno3 = function(tr) {
     });
   });
   calcRow(tr);
-  updateT3Visibility();
 };
 
 // ─── Cálculos ───
@@ -198,6 +196,7 @@ window.addRow = function(dia = '', bonus = '', carga = '', comp = '', e1 = '', s
 
 // ─── Summary ───
 window.updateSummary = function() {
+  updateT3Visibility();
   let sumCarga = 0, sumCargaParcial = 0, sumTrab = 0, sumHE = 0, sumAzure = 0;
   const baseCarga = timeToMin(document.getElementById('cargaDia').value) || 528;
   tbody.querySelectorAll('tr').forEach(tr => {
