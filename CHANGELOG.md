@@ -5,7 +5,17 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-07-01
+## [Não publicado] - 2026-07-02
+
+## [2.3.0] - 2026-07-02
+
+### Corrigido
+
+- Períodos editados não estavam sendo salvos no firebase, apenas no localStorage.
+
+### Adicionado
+
+ - Campo de HE Acumulada para o usuário saber a quantidade de horas extras acumuladas até os dias aneriores.
 
 ## [2.2.5] - 2026-07-01
 

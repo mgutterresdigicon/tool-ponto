@@ -190,7 +190,10 @@ onAuthStateChanged(auth, async user => {
         adminBtn.style.display = 'none';
       }
     }
-    if (window.loadPeriodo) await window.loadPeriodo();
+    if (window.loadPeriodo) {
+      if (window.restorePeriodoLabels) await window.restorePeriodoLabels();
+      await window.loadPeriodo();
+    }
     // Polling de solicitações a cada 60s
     if (!window._solPoll) {
       window._solPoll = setInterval(async () => {

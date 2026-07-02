@@ -62,3 +62,20 @@ export async function loadSettings() {
   const raw = localStorage.getItem('ponto_settings');
   return raw ? JSON.parse(raw) : { cargaDia: '08:48', periodos: {} };
 }
+
+export async function savePeriodoConfig(mes, cfg) {
+  localStorage.setItem('ponto_periodo_' + mes, JSON.stringify(cfg));
+  const settings = await loadSettings();
+  settings.periodos = settings.periodos || {};
+  settings.periodos[mes] = cfg;
+  await saveSettings(settings);
+}
+
+export async function loadPeriodoConfigs() {
+  const settings = await loadSettings();
+  const periodos = settings.periodos || {};
+  Object.entries(periodos).forEach(([mes, cfg]) => {
+    localStorage.setItem('ponto_periodo_' + mes, JSON.stringify(cfg));
+  });
+  return periodos;
+}

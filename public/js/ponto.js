@@ -1,4 +1,4 @@
-import { savePeriodo, loadPeriodoData, listenPeriodo, saveSettings, loadSettings } from "./storage.js";
+import { savePeriodo, loadPeriodoData, listenPeriodo, saveSettings, loadSettings, savePeriodoConfig, loadPeriodoConfigs } from "./storage.js";
 import { modal } from "./modal.js";
 
 const tbody = document.getElementById('tbody');
@@ -168,6 +168,7 @@ window.addRow = function(dia = '', bonus = '', carga = '', comp = '', e1 = '', s
     <td class="calc"></td>
     <td class="calc"></td>
     <td class="calc"></td>
+    <td class="calc he-acum"></td>
   `;
   const inputs = tr.querySelectorAll('input[type="text"]');
   inputs.forEach((inp, idx) => {
@@ -225,6 +226,11 @@ window.updateSummary = function() {
       const diff = total - carga;
       sumHE += Math.abs(diff) >= 6 ? diff : 0;
       sumAzure += total / 60;
+    }
+    const heAcumCell = tr.querySelector('.he-acum');
+    if (heAcumCell) {
+      heAcumCell.textContent = minToStr(sumHE);
+      heAcumCell.className = 'calc he-acum ' + (sumHE >= 0 ? 'positive' : 'negative');
     }
   });
   document.getElementById('sumCarga').textContent = minToStr(sumCarga);
@@ -526,7 +532,7 @@ window.editarPeriodo = async function() {
   const newFim = fim.getDate();
   const label = `${String(newIni).padStart(2,'0')}/${String(ini.getMonth()+1).padStart(2,'0')} - ${String(newFim).padStart(2,'0')}/${String(fim.getMonth()+1).padStart(2,'0')}`;
   opt.textContent = label;
-  localStorage.setItem('ponto_periodo_' + sel.value, JSON.stringify({ label, ini: newIni, fim: newFim }));
+  await savePeriodoConfig(sel.value, { label, ini: newIni, fim: newFim });
 
   // Ajustar período anterior
   const idxAtual = sel.selectedIndex;
@@ -537,7 +543,7 @@ window.editarPeriodo = async function() {
     const prevFim = newIni - 1;
     const prevLabel = String(prevIni).padStart(2,'0') + '/' + prevOpt.value + ' - ' + String(prevFim).padStart(2,'0') + '/' + sel.value;
     prevOpt.textContent = prevLabel;
-    localStorage.setItem('ponto_periodo_' + prevOpt.value, JSON.stringify({ label: prevLabel, ini: prevIni, fim: prevFim }));
+    await savePeriodoConfig(prevOpt.value, { label: prevLabel, ini: prevIni, fim: prevFim });
   }
   // Ajustar próximo período
   if (idxAtual < sel.options.length - 1) {
@@ -547,7 +553,7 @@ window.editarPeriodo = async function() {
     const nextIni = newFim + 1;
     const nextLabel = String(nextIni).padStart(2,'0') + '/' + nextOpt.value + ' - ' + String(nextFim).padStart(2,'0') + '/' + String((parseInt(nextOpt.value) % 12) + 1).padStart(2,'0');
     nextOpt.textContent = nextLabel;
-    localStorage.setItem('ponto_periodo_' + nextOpt.value, JSON.stringify({ label: nextLabel, ini: nextIni, fim: nextFim }));
+    await savePeriodoConfig(nextOpt.value, { label: nextLabel, ini: nextIni, fim: nextFim });
   }
   loadPeriodo();
 };
@@ -565,7 +571,7 @@ document.getElementById('anoCtrl').addEventListener('change', function() {
   loadPeriodo();
 });
 
-// Restaurar labels customizados
+// Restaurar labels customizados (localStorage, antes do login)
 const sel = document.getElementById('selPeriodo');
 Array.from(sel.options).forEach(opt => {
   const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + opt.value) || 'null');
@@ -573,6 +579,16 @@ Array.from(sel.options).forEach(opt => {
 });
 const now = new Date();
 sel.value = now.getDate() >= 16 ? String(now.getMonth() + 1).padStart(2, '0') : String(now.getMonth() || 12).padStart(2, '0');
+
+// Restaurar labels customizados do Firestore (após login)
+export async function restorePeriodoLabels() {
+  const periodos = await loadPeriodoConfigs();
+  Array.from(sel.options).forEach(opt => {
+    const cfg = periodos[opt.value];
+    if (cfg) opt.textContent = cfg.label;
+  });
+}
+window.restorePeriodoLabels = restorePeriodoLabels;
 
 // Tick a cada minuto
 let _lastDay = new Date().getDate();
