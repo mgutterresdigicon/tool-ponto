@@ -382,6 +382,22 @@ function ensureToday() {
   const now = new Date();
   if (now.getDay() % 6 !== 0) {
     const today = String(now.getDate());
+    const sel = document.getElementById('selPeriodo').value;
+    const ano = parseInt(document.getElementById('anoCtrl').value);
+    const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
+    const diaIni = cfg ? cfg.ini : 16;
+    const diaFim = cfg ? cfg.fim : 15;
+    const m1 = parseInt(sel) - 1;
+    const m2 = (m1 + 1) % 12;
+    const y2 = m1 === 11 ? ano + 1 : ano;
+    const todayNum = now.getDate();
+    const todayMes = now.getMonth();
+    const todayAno = now.getFullYear();
+    // Verificar se hoje está dentro do intervalo do período
+    const iniDt = new Date(ano, m1, diaIni);
+    const fimDt = new Date(y2, m2, diaFim);
+    const todayDt = new Date(todayAno, todayMes, todayNum);
+    if (todayDt < iniDt || todayDt > fimDt) return; // hoje não pertence a este período
     const exists = Array.from(tbody.querySelectorAll('tr')).some(tr => tr.querySelectorAll('input[type="text"]')[0].value === today);
     if (!exists) addRow(today);
   }
@@ -403,17 +419,23 @@ function renderRows(data) {
   const ano = parseInt(document.getElementById('anoCtrl').value);
   const cfg = JSON.parse(localStorage.getItem('ponto_periodo_' + sel) || 'null');
   const diaIni = cfg ? cfg.ini : 16;
+  const diaFim = cfg ? cfg.fim : 15;
   const m1 = parseInt(sel) - 1;
+  const m2 = (m1 + 1) % 12;
+  const y2 = m1 === 11 ? ano + 1 : ano;
 
   data.forEach(v => {
     // Verificar se é dia futuro sem dados
     const diaNum = parseInt(v[0]);
     if (diaNum) {
-      const mes = diaNum >= diaIni ? m1 : (m1 + 1) % 12;
+      const mes = diaNum >= diaIni ? m1 : m2;
       const y = (diaNum < diaIni && m1 === 11) ? ano + 1 : ano;
       const dt = new Date(y, mes, diaNum);
       const hasData = v.slice(1).some(val => val && val !== '08:48');
       if (dt > today && !hasData) return; // pular dia futuro vazio
+      // Pular dias fora do intervalo do período (pertencem ao próximo período)
+      const fimDt = new Date(y2, m2, diaFim);
+      if (dt > fimDt) return;
     }
     const tr = addRow(v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
     if (v[8] || v[9]) {
@@ -526,11 +548,11 @@ window.editarPeriodo = async function() {
   container.style.display = 'none';
 
   if (!result) return;
-  const ini = new Date(document.getElementById('mpInicio').value);
-  const fim = new Date(document.getElementById('mpFim').value);
-  const newIni = ini.getDate();
-  const newFim = fim.getDate();
-  const label = `${String(newIni).padStart(2,'0')}/${String(ini.getMonth()+1).padStart(2,'0')} - ${String(newFim).padStart(2,'0')}/${String(fim.getMonth()+1).padStart(2,'0')}`;
+  const iniStr = document.getElementById('mpInicio').value;
+  const fimStr = document.getElementById('mpFim').value;
+  const [, iniMes, newIni] = iniStr.split('-').map(Number);
+  const [, fimMes, newFim] = fimStr.split('-').map(Number);
+  const label = `${String(newIni).padStart(2,'0')}/${String(iniMes).padStart(2,'0')} - ${String(newFim).padStart(2,'0')}/${String(fimMes).padStart(2,'0')}`;
   opt.textContent = label;
   await savePeriodoConfig(sel.value, { label, ini: newIni, fim: newFim });
 

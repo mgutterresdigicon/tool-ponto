@@ -5,7 +5,15 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-07-02
+## [Não publicado] - 2026-07-07
+
+## [2.3.1] - 2026-07-07
+
+### Corrigido
+
+- Ao editar período, o dia exibido ficava 1 a menos do selecionado devido a interpretação de data em UTC (fuso horário -03:00).
+- Ao reduzir o fim de um período, dias que ficaram fora do intervalo eram mantidos na visualização em vez de serem movidos para o próximo período.
+- `ensureToday` não verificava se o dia atual pertencia ao período selecionado, podendo adicionar o dia corrente em um período incorreto.
 
 ## [2.3.0] - 2026-07-02
 
