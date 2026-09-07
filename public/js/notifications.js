@@ -43,24 +43,39 @@ export async function requestNotificationPermission() {
 function send(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Tenta new Notification() primeiro — funciona no Firefox, Safari e alguns
-  // contextos do Chrome. Se lançar exceção (Chrome desktop), cai no SW.
+  // Tenta new Notification() primeiro (Android/Firefox/Safari)
   let sentDirect = false;
   try {
     new Notification(title, { body, tag, silent: false });
     sentDirect = true;
   } catch (_) {
-    // Chrome desktop bloqueia new Notification() fora de SW — usa SW abaixo
+    // Chrome desktop bloqueia — usa SW abaixo
   }
 
-  // Complementa via SW: garante entrega no Chrome desktop e Android PWA
+  // Complementa via SW para Chrome desktop e Android PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
-      // Se já enviou via new Notification(), usa tag diferente para não duplicar
       const swTag = sentDirect ? tag + '_sw' : tag;
       reg.showNotification(title, { body, tag: swTag, requireInteraction: false, silent: false });
     }).catch(() => {});
   }
+}
+
+// Agenda uma notificação no SW para disparar em um momento futuro exato (ms).
+// O SW continua rodando em background mesmo com o app suspenso.
+function scheduleInSW(delayMs, title, body, tag) {
+  if (!('serviceWorker' in navigator) || delayMs <= 0) return;
+  navigator.serviceWorker.ready.then(reg => {
+    if (reg.active) {
+      reg.active.postMessage({
+        type: 'SCHEDULE_NOTIFICATION',
+        delayMs,
+        title,
+        body,
+        tag,
+      });
+    }
+  }).catch(() => {});
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -86,6 +101,13 @@ function tryFire(key, targetMin, beforeMin, titleExact, bodyExact, titleBefore, 
     if (now >= triggerMin && now <= triggerMin + WINDOW_MIN) {
       send(titleBefore, bodyBefore, keyBefore);
       _firedToday.add(keyBefore);
+
+      // Agenda a notificação exata no SW para disparar em background
+      // quando o app estiver suspenso no celular
+      const nowMs = Date.now();
+      const targetMs = nowMs + (targetMin - now) * 60 * 1000;
+      const delayMs  = targetMs - nowMs;
+      scheduleInSW(delayMs, titleExact, bodyExact, keyExact);
     }
   }
 

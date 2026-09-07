@@ -7,17 +7,27 @@ self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(clients.claim()));
 
 self.addEventListener('message', event => {
-  if (!event.data || event.data.type !== 'SHOW_NOTIFICATION') return;
+  if (!event.data) return;
 
-  const { title, body, tag } = event.data;
-  self.registration.showNotification(title, {
-    body,
-    tag,
-    icon: '/icon.svg',
-    badge: '/icon.svg',
-    renotify: false,
-    requireInteraction: false,
-  });
+  if (event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag } = event.data;
+    self.registration.showNotification(title, {
+      body, tag, icon: '/icon.svg', badge: '/icon.svg',
+      renotify: false, requireInteraction: false,
+    });
+  }
+
+  if (event.data.type === 'SCHEDULE_NOTIFICATION') {
+    const { delayMs, title, body, tag } = event.data;
+    if (!delayMs || delayMs <= 0) return;
+    // setTimeout no SW continua rodando mesmo com a página suspensa
+    setTimeout(() => {
+      self.registration.showNotification(title, {
+        body, tag, icon: '/icon.svg', badge: '/icon.svg',
+        renotify: false, requireInteraction: false,
+      });
+    }, delayMs);
+  }
 });
 
 // Ao clicar na notificação, foca a aba do app
