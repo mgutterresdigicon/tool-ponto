@@ -194,6 +194,12 @@ onAuthStateChanged(auth, async user => {
       if (window.restorePeriodoLabels) await window.restorePeriodoLabels();
       await window.loadPeriodo();
     }
+    // Registrar Service Worker para notificações
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(e =>
+        console.warn('[sw] Falha ao registrar:', e)
+      );
+    }
     // Polling de solicitações a cada 60s
     if (!window._solPoll) {
       window._solPoll = setInterval(async () => {

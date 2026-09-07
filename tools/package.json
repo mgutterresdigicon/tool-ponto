@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "firebase-admin": "^14.2.0"
+  },
+  "devDependencies": {
+    "acorn": "^8.18.0"
+  }
+}

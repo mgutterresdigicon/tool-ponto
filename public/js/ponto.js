@@ -1,4 +1,5 @@
-import { savePeriodo, loadPeriodoData, listenPeriodo, saveSettings, loadSettings, savePeriodoConfig, loadPeriodoConfigs } from "./storage.js";
+import { savePeriodo, loadPeriodoData, listenPeriodo, saveSettings, loadSettings, savePeriodoConfig, loadPeriodoConfigs, saveNotificationSettings } from "./storage.js";
+import { checkNotifications, requestNotificationPermission } from "./notifications.js";
 import { modal } from "./modal.js";
 
 const tbody = document.getElementById('tbody');
@@ -302,8 +303,9 @@ window.registrarPonto = async function() {
   campo.value = hora;
   campo.dispatchEvent(new Event('input'));
 
-  // Salvar automaticamente
+  // Salvar automaticamente e verificar notificações
   await salvar();
+  checkNotifications();
 };
 
 // ─── Salvar / Carregar ───
@@ -614,8 +616,16 @@ window.restorePeriodoLabels = restorePeriodoLabels;
 
 // Tick a cada minuto
 let _lastDay = new Date().getDate();
+// Calcula ms até o início do próximo minuto (:00 segundos)
+function msUntilNextMinute() {
+  const now = new Date();
+  return (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+}
+
 function tickOnMinute() {
   tbody.querySelectorAll('tr').forEach(calcRow);
+  // Verificar notificações a cada minuto
+  checkNotifications();
   // Ao virar meia-noite, adicionar o novo dia se for dia útil e período atual
   const now = new Date();
   if (now.getDate() !== _lastDay) {
@@ -626,8 +636,173 @@ function tickOnMinute() {
       if (!exists) addRow(dia);
     }
   }
-  setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
+  setTimeout(tickOnMinute, msUntilNextMinute());
 }
-setTimeout(tickOnMinute, 60000 - (Date.now() % 60000));
+setTimeout(tickOnMinute, msUntilNextMinute());
 
 window.loadPeriodo = loadPeriodo;
+
+// ========== CONFIGURAÇÕES DE NOTIFICAÇÕES ==========
+window.openSettings = async function() {
+  const bg = document.getElementById('settingsModalBg');
+  document.getElementById('settingsModalTitle').textContent = '⚙️ Configurações de Notificações';
+  document.getElementById('settingsModalMsg').textContent = '';
+
+  // Carregar configurações do Firestore (com fallback para localStorage)
+  const allSettings = await loadSettings();
+  const settings = allSettings.notificationSettings || {};
+
+  // Preencher campos com valores atuais
+  setFieldValue('interval_return_enabled', settings.interval_return_enabled ?? true);
+  setFieldValue('intervalReturnTime', settings.interval_return_time ?? 60);
+  setFieldValue('intervalReturnSafeBefore', settings.interval_return_safe_before ?? 5);
+
+  setFieldValue('daily_load_enabled', settings.daily_load_enabled ?? true);
+  setFieldValue('dailyLoadTime', settings.daily_load_time ?? 528);
+  setFieldValue('dailyLoadSafeBefore', settings.daily_load_safe_before ?? 5);
+
+  setFieldValue('shift_max_enabled', settings.shift_max_enabled ?? true);
+  setFieldValue('shiftMaxTime', settings.shift_max_time ?? 360);
+  setFieldValue('shiftMaxSafeBefore', settings.shift_max_safe_before ?? 10);
+
+  setFieldValue('workday_max_enabled', settings.workday_max_enabled ?? true);
+  setFieldValue('workdayMaxTime', settings.workday_max_time ?? 600);
+  setFieldValue('workdayMaxSafeBefore', settings.workday_max_safe_before ?? 10);
+
+  setFieldValue('min_interval_enabled', settings.min_interval_enabled ?? true);
+  setFieldValue('minIntervalTime', settings.min_interval_time ?? 660);
+  setFieldValue('minIntervalSafeBefore', settings.min_interval_safe_before ?? 15);
+
+  bg.classList.add('active');
+};
+
+window.closeSettings = function() {
+  const bg = document.getElementById('settingsModalBg');
+  bg.classList.remove('active');
+};
+
+// Converte minutos inteiros em string "HH:MM" para input type="time"
+function minToTime(min) {
+  if (min == null || isNaN(min)) return '00:00';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+// Converte string "HH:MM" de input type="time" em minutos inteiros
+function timeToMinSettings(val) {
+  if (!val || !val.includes(':')) return 0;
+  const [h, m] = val.split(':').map(Number);
+  return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+}
+
+// Mapa de settingId → id do botão toggle no HTML
+const TOGGLE_BTN_IDS = {
+  interval_return_enabled: 'intervalReturnToggle',
+  daily_load_enabled:      'dailyLoadToggle',
+  shift_max_enabled:       'shiftMaxToggle',
+  workday_max_enabled:     'workdayMaxToggle',
+  min_interval_enabled:    'minIntervalToggle',
+};
+
+function setFieldValue(id, value) {
+  // Botões de toggle — usa mapa explícito para evitar erro de nome
+  if (id in TOGGLE_BTN_IDS) {
+    const btn = document.getElementById(TOGGLE_BTN_IDS[id]);
+    if (btn) {
+      const on = value !== false;
+      btn.textContent = on ? 'Ligado' : 'Desligado';
+      btn.classList.toggle('toggle-on',  on);
+      btn.classList.toggle('toggle-off', !on);
+    }
+    return;
+  }
+
+  const input = document.getElementById(id);
+  if (input) {
+    // Campos de duração principal são type="time" — converter minutos para HH:MM
+    if (input.type === 'time') {
+      input.value = minToTime(value);
+    } else {
+      input.value = value;
+    }
+  }
+}
+
+window.toggleSetting = async function(settingId) {
+  // Lê do localStorage (já sincronizado com Firestore ao abrir o modal via openSettings)
+  const currentValue = localStorage.getItem('ponto_notification_settings');
+  let settings = currentValue ? JSON.parse(currentValue) : {};
+
+  // Inverte o valor atual
+  settings[settingId] = settings[settingId] === false ? true : !settings[settingId];
+
+  // Persiste localmente e no Firestore
+  localStorage.setItem('ponto_notification_settings', JSON.stringify(settings));
+  saveNotificationSettings(settings); // fire-and-forget — não aguardar para não bloquear a UI
+
+  // Atualiza apenas o botão clicado diretamente, sem recarregar do Firestore
+  setFieldValue(settingId, settings[settingId]);
+};
+
+// Renomeado para evitar conflito com o saveSettings importado do storage.js
+window.saveNotificationForm = async function() {
+  const settings = {};
+
+  // Toggles
+  settings.interval_return_enabled = getToggleValue('intervalReturnToggle');
+  settings.daily_load_enabled      = getToggleValue('dailyLoadToggle');
+  settings.shift_max_enabled       = getToggleValue('shiftMaxToggle');
+  settings.workday_max_enabled     = getToggleValue('workdayMaxToggle');
+  settings.min_interval_enabled    = getToggleValue('minIntervalToggle');
+
+  // Campos de duração (type="time" → converter HH:MM para minutos)
+  settings.interval_return_time = timeToMinSettings(document.getElementById('intervalReturnTime')?.value) || 60;
+  settings.daily_load_time      = timeToMinSettings(document.getElementById('dailyLoadTime')?.value)      || 528;
+  settings.shift_max_time       = timeToMinSettings(document.getElementById('shiftMaxTime')?.value)       || 360;
+  settings.workday_max_time     = timeToMinSettings(document.getElementById('workdayMaxTime')?.value)     || 600;
+  settings.min_interval_time    = timeToMinSettings(document.getElementById('minIntervalTime')?.value)    || 660;
+
+  // Campos de antecedência (type="number", permanecem em minutos)
+  settings.interval_return_safe_before = parseInt(document.getElementById('intervalReturnSafeBefore')?.value) || 5;
+  settings.daily_load_safe_before      = parseInt(document.getElementById('dailyLoadSafeBefore')?.value)      || 5;
+  settings.shift_max_safe_before       = parseInt(document.getElementById('shiftMaxSafeBefore')?.value)       || 10;
+  settings.workday_max_safe_before     = parseInt(document.getElementById('workdayMaxSafeBefore')?.value)     || 10;
+  settings.min_interval_safe_before    = parseInt(document.getElementById('minIntervalSafeBefore')?.value)    || 15;
+
+  localStorage.setItem('ponto_notification_settings', JSON.stringify(settings));
+  await saveNotificationSettings(settings);
+  // Solicitar permissão de notificação se ainda não foi concedida
+  await requestNotificationPermission();
+  closeSettings();
+};
+
+function getToggleValue(btnId) {
+  const btn = document.getElementById(btnId);
+  if (btn) return btn.classList.contains('toggle-on');
+  return true; // default ligado se botão não encontrado
+}
+
+window.resetSettings = async function() {
+  const defaults = {
+    interval_return_enabled: true,
+    interval_return_time: 60,
+    interval_return_safe_before: 5,
+    daily_load_enabled: true,
+    daily_load_time: 528,
+    daily_load_safe_before: 5,
+    shift_max_enabled: true,
+    shift_max_time: 360,
+    shift_max_safe_before: 10,
+    workday_max_enabled: true,
+    workday_max_time: 600,
+    workday_max_safe_before: 10,
+    min_interval_enabled: true,
+    min_interval_time: 660,
+    min_interval_safe_before: 15,
+  };
+  
+  localStorage.setItem('ponto_notification_settings', JSON.stringify(defaults));
+  await saveNotificationSettings(defaults);
+  await openSettings();
+};

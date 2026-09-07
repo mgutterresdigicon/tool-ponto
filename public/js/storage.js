@@ -49,18 +49,48 @@ export async function saveSettings(settings) {
   localStorage.setItem('ponto_settings', JSON.stringify(settings));
 }
 
-export async function loadSettings() {
+export async function saveNotificationSettings(settings) {
   const uid = state.currentUser?.uid;
   if (uid) {
-    const snap = await getDoc(doc(db, "config", uid, "data", "ponto_settings"));
-    if (snap.exists()) {
-      const data = snap.data();
-      localStorage.setItem('ponto_settings', JSON.stringify(data));
-      return data;
+    await setDoc(doc(db, "config", uid, "data", "ponto_notification_settings"), settings);
+  }
+  localStorage.setItem('ponto_notification_settings', JSON.stringify(settings));
+}
+
+export async function loadSettings() {
+  const uid = state.currentUser?.uid;
+  let pontoSettings = null;
+  let notificationSettings = null;
+
+  if (uid) {
+    // Sempre prioriza o Firestore quando logado (garante sync entre dispositivos)
+    const [pontoSnap, notifSnap] = await Promise.all([
+      getDoc(doc(db, "config", uid, "data", "ponto_settings")),
+      getDoc(doc(db, "config", uid, "data", "ponto_notification_settings")),
+    ]);
+
+    if (pontoSnap.exists()) {
+      pontoSettings = pontoSnap.data();
+      localStorage.setItem('ponto_settings', JSON.stringify(pontoSettings));
+    }
+
+    if (notifSnap.exists()) {
+      notificationSettings = notifSnap.data();
+      localStorage.setItem('ponto_notification_settings', JSON.stringify(notificationSettings));
     }
   }
-  const raw = localStorage.getItem('ponto_settings');
-  return raw ? JSON.parse(raw) : { cargaDia: '08:48', periodos: {} };
+
+  // Fallback para localStorage quando offline ou não logado
+  if (!pontoSettings) {
+    const raw = localStorage.getItem('ponto_settings');
+    if (raw) pontoSettings = JSON.parse(raw);
+  }
+  if (!notificationSettings) {
+    const raw = localStorage.getItem('ponto_notification_settings');
+    if (raw) notificationSettings = JSON.parse(raw);
+  }
+
+  return { ...pontoSettings, notificationSettings };
 }
 
 export async function savePeriodoConfig(mes, cfg) {
