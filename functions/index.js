@@ -38,9 +38,31 @@ function timeToMin(str) {
 }
 
 // Verifica se now está dentro da janela de disparo [target, target+2]
-const WINDOW = 2;
-function inWindow(now, target) {
-  return now >= target && now <= target + WINDOW;
+// Retorna hora atual em minutos desde meia-noite
+function nowMin() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
+// nowMs: timestamp real da execução em ms desde meia-noite
+// Usado para comparar com precisão de segundos
+function nowMs() {
+  const n = new Date();
+  return (n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds()) * 1000;
+}
+
+// targetMin em minutos → ms desde meia-noite (assumindo segundo :00)
+function targetToMs(targetMin) {
+  return targetMin * 60 * 1000;
+}
+
+// Janela de ±90s centrada no alvo:
+//  - Cobre atraso do scheduler (até ~60s)
+//  - Evita disparar cedo demais (não antes de target - 30s)
+//  - Evita reprocessar na próxima execução (fired set garante deduplicação)
+function inWindow(nowM, target) {
+  const diffMs = nowMs() - targetToMs(target);
+  return diffMs >= -30000 && diffMs <= 90000;
 }
 
 // Envia push FCM para um token
