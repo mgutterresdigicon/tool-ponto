@@ -1,6 +1,6 @@
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails } from "./firebase-config.js";
+import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails, registerFCMToken } from "./firebase-config.js";
 import { state } from "./state.js";
 import { modal } from "./modal.js";
 
@@ -201,7 +201,10 @@ onAuthStateChanged(auth, async user => {
         const old = registrations.filter(r => !r.active || r.active.scriptURL.includes('sw.js'));
         return Promise.all(old.map(r => r.unregister()));
       }).then(() => {
-        navigator.serviceWorker.register('/sw.js');
+        return navigator.serviceWorker.register('/sw.js');
+      }).then(() => {
+        // Registrar FCM token após SW ativo (necessário para push com app fechado)
+        registerFCMToken(user.uid);
       }).catch(e => console.warn('[sw] Falha ao registrar:', e));
     }
     // Polling de solicitações a cada 60s
