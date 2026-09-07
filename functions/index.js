@@ -186,36 +186,49 @@ exports.checkNotifications = onSchedule({
   // Buscar todos os usuários com FCM token ativo
   const tokensSnap = await db.collectionGroup('fcm_tokens').get();
   if (tokensSnap.empty) {
-    console.log('Nenhum token FCM registrado.');
+    console.log('⚠️ Nenhum token FCM registrado no Firestore (config/{uid}/fcm_tokens/).');
     return;
   }
+
+  console.log(`📱 Tokens encontrados: ${tokensSnap.size}`);
 
   const promises = tokensSnap.docs.map(async tokenDoc => {
     const { token, uid } = tokenDoc.data();
     if (!token || !uid) return;
+    console.log(`👤 Processando uid=${uid.slice(0,8)}... token=${token.slice(0,15)}...`);
 
     try {
       // Carregar configurações de notificação do usuário
       const cfgSnap = await db.doc(`config/${uid}/data/ponto_notification_settings`).get();
-      if (!cfgSnap.exists) return;
+      if (!cfgSnap.exists) {
+        console.log(`  ⚠️ Sem configurações de notificação para uid=${uid.slice(0,8)}`);
+        return;
+      }
       const cfg = cfgSnap.data();
 
       // Carregar horários registrados hoje
       const periodoKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}`;
       const periodoSnap = await db.doc(`pontos/${uid}/periodos/${periodoKey}`).get();
-      if (!periodoSnap.exists) return;
+      if (!periodoSnap.exists) {
+        console.log(`  ⚠️ Sem período ${periodoKey} para uid=${uid.slice(0,8)}`);
+        return;
+      }
 
       // Parsear a linha do dia atual do JSON salvo
       const rows = JSON.parse(periodoSnap.data().data || '[]');
       const todayDay = String(today.getDate());
       const row = rows.find(r => r[0] === todayDay);
-      if (!row) return;
+      if (!row) {
+        console.log(`  ⚠️ Sem linha do dia ${todayDay} para uid=${uid.slice(0,8)}`);
+        return;
+      }
 
       const times = {
         e1: timeToMin(row[4]), s1: timeToMin(row[5]),
         e2: timeToMin(row[6]), s2: timeToMin(row[7]),
         e3: timeToMin(row[8]), s3: timeToMin(row[9]),
       };
+      console.log(`  ⏱ times: e1=${times.e1} s1=${times.s1} e2=${times.e2} s2=${times.s2}`);
 
       // Carregar notificações já disparadas hoje (deduplicação)
       const firedSnap = await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).get();
@@ -229,7 +242,11 @@ exports.checkNotifications = onSchedule({
         ...checkWorkdayMax(times, cfg, now, fired),
       ];
 
-      if (toFire.length === 0) return;
+      if (toFire.length === 0) {
+        console.log(`  ✓ Nada a disparar para uid=${uid.slice(0,8)} agora (${fmt(now)})`);
+        return;
+      }
+      console.log(`  🚀 Disparando ${toFire.length} notificação(ões) para uid=${uid.slice(0,8)}:`, toFire.map(f => f.key));
 
       // Enviar pushes e registrar como disparados
       const newFired = [];
