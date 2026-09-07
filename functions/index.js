@@ -206,8 +206,37 @@ exports.checkNotifications = onSchedule({
       }
       const cfg = cfgSnap.data();
 
-      // Carregar horários registrados hoje
-      const periodoKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}`;
+      // Calcular qual período contém o dia atual
+      // Lógica: período "MM" vai de dia diaIni/MM até diaFim/(MM+1)
+      // O padrão é 16/MM a 15/(MM+1). Dias 1-15 pertencem ao período do mês anterior.
+      const diaAtual = today.getDate();
+      const mesAtual = today.getMonth() + 1; // 1-12
+
+      // Buscar configuração de período do usuário para saber o diaIni correto
+      const settingsSnap = await db.doc(`config/${uid}/data/ponto_settings`).get();
+      const settings = settingsSnap.exists ? settingsSnap.data() : {};
+      const periodos  = settings.periodos || {};
+
+      // Determinar qual período contém hoje
+      // Se diaAtual >= diaIni do mês atual → período do mês atual
+      // Se diaAtual < diaIni do mês atual → período do mês anterior
+      const mesStr    = String(mesAtual).padStart(2, '0');
+      const cfgMes    = periodos[mesStr] || {};
+      const diaIni    = cfgMes.ini ?? 16;
+      const periodoMes = diaAtual >= diaIni
+        ? mesStr
+        : String(mesAtual === 1 ? 12 : mesAtual - 1).padStart(2, '0');
+
+      // Ano do período (pode ser ano anterior se período 12 vai até jan)
+      const periodoAno = (mesAtual === 1 && diaAtual >= diaIni)
+        ? today.getFullYear()
+        : (periodoMes === '12' && mesAtual === 1)
+          ? today.getFullYear() - 1
+          : today.getFullYear();
+
+      const periodoKey = `${periodoAno}_${periodoMes}`;
+      console.log(`  📅 Período calculado: ${periodoKey} (dia ${diaAtual}, diaIni=${diaIni})`);
+
       const periodoSnap = await db.doc(`pontos/${uid}/periodos/${periodoKey}`).get();
       if (!periodoSnap.exists) {
         console.log(`  ⚠️ Sem período ${periodoKey} para uid=${uid.slice(0,8)}`);
