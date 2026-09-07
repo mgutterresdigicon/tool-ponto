@@ -209,6 +209,7 @@ exports.checkNotifications = onSchedule({
         return;
       }
       const cfg = cfgSnap.data();
+      console.log(`  ⚙️ cfg: enabled=${cfg.interval_return_enabled} time=${cfg.interval_return_time} before=${cfg.interval_return_safe_before}`);
 
       // Calcular qual período contém o dia atual
       // Lógica: período "MM" vai de dia diaIni/MM até diaFim/(MM+1)
@@ -274,6 +275,13 @@ exports.checkNotifications = onSchedule({
         ...checkShiftMax(times, cfg, now, fired),
         ...checkWorkdayMax(times, cfg, now, fired),
       ];
+
+      // Log dos targets calculados para diagnóstico
+      if (times.s1 != null && cfg.interval_return_enabled) {
+        const t = times.s1 + (cfg.interval_return_time ?? 60);
+        const b = cfg.interval_return_safe_before ?? 5;
+        console.log(`  🎯 interval_return: s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} diffMs=${nowMs() - targetToMs(t-b)}`);
+      }
 
       if (toFire.length === 0) {
         console.log(`  ✓ Nada a disparar para uid=${uid.slice(0,8)} agora (${fmt(now)})`);
