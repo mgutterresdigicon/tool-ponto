@@ -13,8 +13,8 @@ self.addEventListener('message', event => {
   self.registration.showNotification(title, {
     body,
     tag,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     renotify: false,
     requireInteraction: false,
   });
