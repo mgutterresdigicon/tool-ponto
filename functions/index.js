@@ -38,16 +38,19 @@ function timeToMin(str) {
 }
 
 // Verifica se now está dentro da janela de disparo [target, target+2]
-// Retorna hora atual em minutos desde meia-noite
+// Retorna hora atual em minutos desde meia-noite no fuso de Brasília (UTC-3)
+// A Cloud Function roda em UTC — sem isso, os cálculos de horário ficam errados.
+function nowBRT() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+}
+
 function nowMin() {
-  const n = new Date();
+  const n = nowBRT();
   return n.getHours() * 60 + n.getMinutes();
 }
 
-// nowMs: timestamp real da execução em ms desde meia-noite
-// Usado para comparar com precisão de segundos
 function nowMs() {
-  const n = new Date();
+  const n = nowBRT();
   return (n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds()) * 1000;
 }
 
@@ -178,7 +181,8 @@ exports.checkNotifications = onSchedule({
   timeoutSeconds: 60,
 }, async () => {
   const now     = nowMin();
-  const today   = new Date();
+  // Usar data/hora de Brasília em todos os cálculos de dia/período
+  const today   = nowBRT();
   const dateKey = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
 
   console.log(`🔔 checkNotifications — ${fmt(now)} (${dateKey})`);
