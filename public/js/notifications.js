@@ -43,17 +43,23 @@ export async function requestNotificationPermission() {
 function send(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Usa ServiceWorkerRegistration.showNotification() diretamente — funciona mesmo
-  // quando o SW ainda não é controller da página (primeiro ciclo após registro).
-  // É a única forma que o Chrome aceita notificações em contexto de página.
+  // Tenta new Notification() primeiro — funciona no Firefox, Safari e alguns
+  // contextos do Chrome. Se lançar exceção (Chrome desktop), cai no SW.
+  let sentDirect = false;
+  try {
+    new Notification(title, { body, tag, silent: false });
+    sentDirect = true;
+  } catch (_) {
+    // Chrome desktop bloqueia new Notification() fora de SW — usa SW abaixo
+  }
+
+  // Complementa via SW: garante entrega no Chrome desktop e Android PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, { body, tag, requireInteraction: false });
-    }).catch(e => console.error('[notif] SW.ready erro:', e));
-  } else {
-    // Fallback Firefox / Safari
-    try { new Notification(title, { body, tag }); }
-    catch (e) { console.error('[notif] Erro ao criar Notification:', e); }
+      // Se já enviou via new Notification(), usa tag diferente para não duplicar
+      const swTag = sentDirect ? tag + '_sw' : tag;
+      reg.showNotification(title, { body, tag: swTag, requireInteraction: false, silent: false });
+    }).catch(() => {});
   }
 }
 

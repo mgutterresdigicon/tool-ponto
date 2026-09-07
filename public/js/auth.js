@@ -195,10 +195,14 @@ onAuthStateChanged(auth, async user => {
       await window.loadPeriodo();
     }
     // Registrar Service Worker para notificações
+    // Cancela registros anteriores para garantir estado limpo após updates
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(e =>
-        console.warn('[sw] Falha ao registrar:', e)
-      );
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        const old = registrations.filter(r => !r.active || r.active.scriptURL.includes('sw.js'));
+        return Promise.all(old.map(r => r.unregister()));
+      }).then(() => {
+        navigator.serviceWorker.register('/sw.js');
+      }).catch(e => console.warn('[sw] Falha ao registrar:', e));
     }
     // Polling de solicitações a cada 60s
     if (!window._solPoll) {
