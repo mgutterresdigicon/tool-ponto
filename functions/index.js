@@ -18,9 +18,32 @@ const messaging = getMessaging();
 
 // ── Helpers ──────────────────────────────────────────────────
 
-function nowMin() {
-  const n = new Date();
-  return n.getHours() * 60 + n.getMinutes();
+// Retorna Date no fuso de Brasília (UTC-3)
+// A Cloud Function roda em UTC — sem isso os cálculos de horário ficam errados.
+function nowBRT() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+}
+
+// Minutos desde meia-noite em BRT
+function nowMin(brt) {
+  return brt.getHours() * 60 + brt.getMinutes();
+}
+
+// Milissegundos desde meia-noite em BRT (inclui segundos para precisão)
+function nowMs(brt) {
+  return (brt.getHours() * 3600 + brt.getMinutes() * 60 + brt.getSeconds()) * 1000;
+}
+
+// targetMin (inteiro de minutos) → ms desde meia-noite
+function targetToMs(targetMin) {
+  return targetMin * 60 * 1000;
+}
+
+// Janela de disparo: de -30s antes até +90s depois do alvo
+// Cobre atraso típico do Cloud Scheduler (0-60s)
+function inWindow(currentMs, target) {
+  const diffMs = currentMs - targetToMs(target);
+  return diffMs >= -30000 && diffMs <= 90000;
 }
 
 function fmt(min) {
@@ -37,37 +60,6 @@ function timeToMin(str) {
   return h * 60 + m;
 }
 
-// Verifica se now está dentro da janela de disparo [target, target+2]
-// Retorna hora atual em minutos desde meia-noite no fuso de Brasília (UTC-3)
-// A Cloud Function roda em UTC — sem isso, os cálculos de horário ficam errados.
-function nowBRT() {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-}
-
-function nowMin() {
-  const n = nowBRT();
-  return n.getHours() * 60 + n.getMinutes();
-}
-
-function nowMs() {
-  const n = nowBRT();
-  return (n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds()) * 1000;
-}
-
-// targetMin em minutos → ms desde meia-noite (assumindo segundo :00)
-function targetToMs(targetMin) {
-  return targetMin * 60 * 1000;
-}
-
-// Janela de ±90s centrada no alvo:
-//  - Cobre atraso do scheduler (até ~60s)
-//  - Evita disparar cedo demais (não antes de target - 30s)
-//  - Evita reprocessar na próxima execução (fired set garante deduplicação)
-function inWindow(nowM, target) {
-  const diffMs = nowMs() - targetToMs(target);
-  return diffMs >= -30000 && diffMs <= 90000;
-}
-
 // Envia push FCM para um token
 async function sendPush(token, title, body, tag) {
   try {
@@ -80,95 +72,75 @@ async function sendPush(token, title, body, tag) {
     });
     console.log(`✅ Push enviado: "${title}" → ${token.slice(0, 20)}...`);
   } catch (err) {
-    // Token inválido/expirado — remover do Firestore
     if (err.code === 'messaging/registration-token-not-registered' ||
         err.code === 'messaging/invalid-registration-token') {
-      console.warn(`⚠️ Token inválido, removendo: ${token.slice(0, 20)}...`);
+      console.warn(`⚠️ Token inválido: ${token.slice(0, 20)}...`);
       throw { invalidToken: true };
     }
     console.error(`❌ Erro ao enviar push:`, err.message);
   }
 }
 
-// ── Regras (mesmo cálculo do notifications.js do frontend) ───
+// ── Regras ───────────────────────────────────────────────────
+// currentMs: ms desde meia-noite BRT, capturado uma vez no início da execução
 
-function checkIntervalReturn(times, cfg, now, fired) {
+function checkIntervalReturn(times, cfg, currentMs, fired) {
   if (!cfg.interval_return_enabled) return [];
-  const { s1 } = times;
-  if (s1 == null) return [];
-
-  const target = s1 + (cfg.interval_return_time ?? 60);
+  if (times.s1 == null) return [];
+  const target = times.s1 + (cfg.interval_return_time ?? 60);
   const before = cfg.interval_return_safe_before ?? 5;
   const results = [];
-
-  if (!fired.has('interval_return_before') && inWindow(now, target - before)) {
+  if (!fired.has('interval_return_before') && inWindow(currentMs, target - before))
     results.push({ key: 'interval_return_before', title: '⏰ Intervalo terminando', body: `Seu intervalo termina em ${before} min (às ${fmt(target)}).` });
-  }
-  if (!fired.has('interval_return_exact') && inWindow(now, target)) {
+  if (!fired.has('interval_return_exact') && inWindow(currentMs, target))
     results.push({ key: 'interval_return_exact', title: '🔔 Fim do Intervalo', body: `Retorne ao trabalho às ${fmt(target)}.` });
-  }
   return results;
 }
 
-function checkDailyLoad(times, cfg, now, fired) {
+function checkDailyLoad(times, cfg, currentMs, fired) {
   if (!cfg.daily_load_enabled) return [];
-  const { e1 } = times;
-  if (e1 == null) return [];
-
-  const target = e1 + (cfg.daily_load_time ?? 528);
+  if (times.e1 == null) return [];
+  const target = times.e1 + (cfg.daily_load_time ?? 528);
   const before = cfg.daily_load_safe_before ?? 5;
   const results = [];
-
-  if (!fired.has('daily_load_before') && inWindow(now, target - before)) {
+  if (!fired.has('daily_load_before') && inWindow(currentMs, target - before))
     results.push({ key: 'daily_load_before', title: '⏰ Carga diária quase completa', body: `Faltam ${before} min para completar sua carga (às ${fmt(target)}).` });
-  }
-  if (!fired.has('daily_load_exact') && inWindow(now, target)) {
+  if (!fired.has('daily_load_exact') && inWindow(currentMs, target))
     results.push({ key: 'daily_load_exact', title: '✅ Carga Diária Completa', body: `Você completou ${fmt(cfg.daily_load_time ?? 528)} de trabalho hoje.` });
-  }
   return results;
 }
 
-function checkShiftMax(times, cfg, now, fired) {
+function checkShiftMax(times, cfg, currentMs, fired) {
   if (!cfg.shift_max_enabled) return [];
   const max    = cfg.shift_max_time ?? 360;
   const before = cfg.shift_max_safe_before ?? 10;
   const results = [];
-
-  const entries = [
+  for (const { key, entry, exit } of [
     { key: 'T1', entry: times.e1, exit: times.s1 },
     { key: 'T2', entry: times.e2, exit: times.s2 },
     { key: 'T3', entry: times.e3, exit: times.s3 },
-  ];
-
-  for (const { key, entry, exit } of entries) {
+  ]) {
     if (entry == null || exit != null) continue;
     const target = entry + max;
-    if (!fired.has(`shift_max_${key}_before`) && inWindow(now, target - before)) {
+    if (!fired.has(`shift_max_${key}_before`) && inWindow(currentMs, target - before))
       results.push({ key: `shift_max_${key}_before`, title: `⏰ Turno máximo próximo (${key})`, body: `Faltam ${before} min para o limite do turno ${key} (às ${fmt(target)}).` });
-    }
-    if (!fired.has(`shift_max_${key}_exact`) && inWindow(now, target)) {
+    if (!fired.has(`shift_max_${key}_exact`) && inWindow(currentMs, target))
       results.push({ key: `shift_max_${key}_exact`, title: `⚠️ Turno Máximo Atingido (${key})`, body: `Você está há ${fmt(max)} no ${key}. Considere registrar a saída.` });
-    }
   }
   return results;
 }
 
-function checkWorkdayMax(times, cfg, now, fired) {
+function checkWorkdayMax(times, cfg, currentMs, fired) {
   if (!cfg.workday_max_enabled) return [];
-  const { e1 } = times;
-  if (e1 == null) return [];
-
+  if (times.e1 == null) return [];
   const max    = cfg.workday_max_time ?? 600;
-  const target = e1 + max;
+  const target = times.e1 + max;
   const before = cfg.workday_max_safe_before ?? 10;
   const results = [];
-
-  if (!fired.has('workday_max_before') && inWindow(now, target - before)) {
+  if (!fired.has('workday_max_before') && inWindow(currentMs, target - before))
     results.push({ key: 'workday_max_before', title: '⏰ Jornada máxima próxima', body: `Faltam ${before} min para a jornada máxima (às ${fmt(target)}).` });
-  }
-  if (!fired.has('workday_max_exact') && inWindow(now, target)) {
+  if (!fired.has('workday_max_exact') && inWindow(currentMs, target))
     results.push({ key: 'workday_max_exact', title: '🚨 Jornada Máxima Atingida', body: `Você está trabalhando há ${fmt(max)} hoje.` });
-  }
   return results;
 }
 
@@ -180,67 +152,44 @@ exports.checkNotifications = onSchedule({
   memory: '256MiB',
   timeoutSeconds: 60,
 }, async () => {
-  const now     = nowMin();
-  // Usar data/hora de Brasília em todos os cálculos de dia/período
-  const today   = nowBRT();
-  const dateKey = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+  // Captura o momento BRT uma única vez para toda a execução
+  const brt       = nowBRT();
+  const currentMs = nowMs(brt);
+  const now       = nowMin(brt);
+  const dateKey   = `${brt.getFullYear()}${String(brt.getMonth() + 1).padStart(2, '0')}${String(brt.getDate()).padStart(2, '0')}`;
 
-  console.log(`🔔 checkNotifications — ${fmt(now)} (${dateKey})`);
+  console.log(`🔔 checkNotifications — ${fmt(now)} (${dateKey}) currentMs=${currentMs}`);
 
-  // Buscar todos os usuários com FCM token ativo
   const tokensSnap = await db.collectionGroup('fcm_tokens').get();
   if (tokensSnap.empty) {
-    console.log('⚠️ Nenhum token FCM registrado no Firestore (config/{uid}/fcm_tokens/).');
+    console.log('⚠️ Nenhum token FCM registrado.');
     return;
   }
-
   console.log(`📱 Tokens encontrados: ${tokensSnap.size}`);
 
   const promises = tokensSnap.docs.map(async tokenDoc => {
     const { token, uid } = tokenDoc.data();
     if (!token || !uid) return;
-    console.log(`👤 Processando uid=${uid.slice(0,8)}... token=${token.slice(0,15)}...`);
 
     try {
-      // Carregar configurações de notificação do usuário
       const cfgSnap = await db.doc(`config/${uid}/data/ponto_notification_settings`).get();
-      if (!cfgSnap.exists) {
-        console.log(`  ⚠️ Sem configurações de notificação para uid=${uid.slice(0,8)}`);
-        return;
-      }
+      if (!cfgSnap.exists) return;
       const cfg = cfgSnap.data();
-      console.log(`  ⚙️ cfg: enabled=${cfg.interval_return_enabled} time=${cfg.interval_return_time} before=${cfg.interval_return_safe_before}`);
 
-      // Calcular qual período contém o dia atual
-      // Lógica: período "MM" vai de dia diaIni/MM até diaFim/(MM+1)
-      // O padrão é 16/MM a 15/(MM+1). Dias 1-15 pertencem ao período do mês anterior.
-      const diaAtual = today.getDate();
-      const mesAtual = today.getMonth() + 1; // 1-12
-
-      // Buscar configuração de período do usuário para saber o diaIni correto
+      // Calcular qual período contém hoje
+      const diaAtual   = brt.getDate();
+      const mesAtual   = brt.getMonth() + 1;
       const settingsSnap = await db.doc(`config/${uid}/data/ponto_settings`).get();
-      const settings = settingsSnap.exists ? settingsSnap.data() : {};
-      const periodos  = settings.periodos || {};
-
-      // Determinar qual período contém hoje
-      // Se diaAtual >= diaIni do mês atual → período do mês atual
-      // Se diaAtual < diaIni do mês atual → período do mês anterior
-      const mesStr    = String(mesAtual).padStart(2, '0');
-      const cfgMes    = periodos[mesStr] || {};
-      const diaIni    = cfgMes.ini ?? 16;
+      const periodos   = settingsSnap.exists ? (settingsSnap.data().periodos || {}) : {};
+      const mesStr     = String(mesAtual).padStart(2, '0');
+      const diaIni     = (periodos[mesStr] || {}).ini ?? 16;
       const periodoMes = diaAtual >= diaIni
         ? mesStr
         : String(mesAtual === 1 ? 12 : mesAtual - 1).padStart(2, '0');
-
-      // Ano do período (pode ser ano anterior se período 12 vai até jan)
-      const periodoAno = (mesAtual === 1 && diaAtual >= diaIni)
-        ? today.getFullYear()
-        : (periodoMes === '12' && mesAtual === 1)
-          ? today.getFullYear() - 1
-          : today.getFullYear();
-
+      const periodoAno = (periodoMes === '12' && mesAtual === 1)
+        ? brt.getFullYear() - 1
+        : brt.getFullYear();
       const periodoKey = `${periodoAno}_${periodoMes}`;
-      console.log(`  📅 Período calculado: ${periodoKey} (dia ${diaAtual}, diaIni=${diaIni})`);
 
       const periodoSnap = await db.doc(`pontos/${uid}/periodos/${periodoKey}`).get();
       if (!periodoSnap.exists) {
@@ -248,63 +197,48 @@ exports.checkNotifications = onSchedule({
         return;
       }
 
-      // Parsear a linha do dia atual do JSON salvo
-      const rows = JSON.parse(periodoSnap.data().data || '[]');
-      const todayDay = String(today.getDate());
-      const row = rows.find(r => r[0] === todayDay);
-      if (!row) {
-        console.log(`  ⚠️ Sem linha do dia ${todayDay} para uid=${uid.slice(0,8)}`);
-        return;
-      }
+      const rows     = JSON.parse(periodoSnap.data().data || '[]');
+      const todayDay = String(brt.getDate());
+      const row      = rows.find(r => r[0] === todayDay);
+      if (!row) return;
 
       const times = {
         e1: timeToMin(row[4]), s1: timeToMin(row[5]),
         e2: timeToMin(row[6]), s2: timeToMin(row[7]),
         e3: timeToMin(row[8]), s3: timeToMin(row[9]),
       };
-      console.log(`  ⏱ times: e1=${times.e1} s1=${times.s1} e2=${times.e2} s2=${times.s2}`);
 
-      // Carregar notificações já disparadas hoje (deduplicação)
       const firedSnap = await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).get();
-      const fired = new Set(firedSnap.exists ? (firedSnap.data().keys || []) : []);
+      const fired     = new Set(firedSnap.exists ? (firedSnap.data().keys || []) : []);
 
-      // Verificar cada regra
-      const toFire = [
-        ...checkIntervalReturn(times, cfg, now, fired),
-        ...checkDailyLoad(times, cfg, now, fired),
-        ...checkShiftMax(times, cfg, now, fired),
-        ...checkWorkdayMax(times, cfg, now, fired),
-      ];
-
-      // Log dos targets calculados para diagnóstico
+      // Log de diagnóstico
       if (times.s1 != null && cfg.interval_return_enabled) {
         const t = times.s1 + (cfg.interval_return_time ?? 60);
         const b = cfg.interval_return_safe_before ?? 5;
-        console.log(`  🎯 interval_return: s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} diffMs=${nowMs() - targetToMs(t-b)}`);
+        const diff = currentMs - targetToMs(t - b);
+        console.log(`  🎯 uid=${uid.slice(0,8)} s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} currentMs=${currentMs} diff=${diff} inWindow=${inWindow(currentMs, t-b)}`);
       }
 
-      if (toFire.length === 0) {
-        console.log(`  ✓ Nada a disparar para uid=${uid.slice(0,8)} agora (${fmt(now)})`);
-        return;
-      }
+      const toFire = [
+        ...checkIntervalReturn(times, cfg, currentMs, fired),
+        ...checkDailyLoad(times, cfg, currentMs, fired),
+        ...checkShiftMax(times, cfg, currentMs, fired),
+        ...checkWorkdayMax(times, cfg, currentMs, fired),
+      ];
+
+      if (toFire.length === 0) return;
       console.log(`  🚀 Disparando ${toFire.length} notificação(ões) para uid=${uid.slice(0,8)}:`, toFire.map(f => f.key));
 
-      // Enviar pushes e registrar como disparados
       const newFired = [];
       for (const { key, title, body } of toFire) {
         try {
           await sendPush(token, title, body, key);
           newFired.push(key);
         } catch (e) {
-          if (e.invalidToken) {
-            // Remover token inválido do Firestore
-            await tokenDoc.ref.delete();
-            return;
-          }
+          if (e.invalidToken) { await tokenDoc.ref.delete(); return; }
         }
       }
 
-      // Persistir deduplicação no Firestore (TTL implícito: novo doc a cada dia)
       if (newFired.length > 0) {
         await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).set({
           keys: [...fired, ...newFired],
