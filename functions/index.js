@@ -158,17 +158,9 @@ exports.checkNotifications = onSchedule({
   const now       = nowMin(brt);
   const dateKey   = `${brt.getFullYear()}${String(brt.getMonth() + 1).padStart(2, '0')}${String(brt.getDate()).padStart(2, '0')}`;
 
-  console.log(`🔔 checkNotifications — ${fmt(now)} (${dateKey}) currentMs=${currentMs}`);
-
   const tokensSnap = await db.collectionGroup('fcm_tokens').get();
-  if (tokensSnap.empty) {
-    console.log('⚠️ Nenhum token FCM registrado.');
-    return;
-  }
-  console.log(`📱 Tokens encontrados: ${tokensSnap.size}`);
+  if (tokensSnap.empty) return;
 
-  // Agrupar tokens por uid para processar um uid de cada vez
-  // Evita disparar múltiplas notificações para o mesmo usuário
   const tokensByUid = new Map();
   for (const tokenDoc of tokensSnap.docs) {
     const { token, uid } = tokenDoc.data();
@@ -177,7 +169,7 @@ exports.checkNotifications = onSchedule({
     tokensByUid.get(uid).push({ token, tokenDoc });
   }
 
-  console.log(`👥 Usuários únicos: ${tokensByUid.size}`);
+  console.log(`🔔 ${fmt(now)} — ${tokensByUid.size} usuário(s)`);
 
   const promises = [...tokensByUid.entries()].map(async ([uid, tokens]) => {
 
@@ -221,26 +213,10 @@ exports.checkNotifications = onSchedule({
       const firedSnap = await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).get();
       const firedData = firedSnap.exists ? firedSnap.data() : {};
       const firedKeys = firedData.keys || [];
-
-      // Se a saída registrada mudou desde o último disparo, limpa o fired
-      // para não bloquear notificações com horários novos
-      const lastS1 = firedData.lastS1 ?? null;
-      const currentS1 = times.s1;
-      const fired = (lastS1 !== null && lastS1 !== currentS1)
-        ? new Set()   // saída mudou → reinicia deduplicação
+      const lastS1    = firedData.lastS1 ?? null;
+      const fired     = (lastS1 !== null && lastS1 !== times.s1)
+        ? new Set()
         : new Set(firedKeys);
-
-      // Log de diagnóstico
-      if (times.s1 != null && cfg.interval_return_enabled) {
-        const t = times.s1 + (cfg.interval_return_time ?? 60);
-        const b = cfg.interval_return_safe_before ?? 5;
-        const diffBefore = currentMs - targetToMs(t - b);
-        const diffExact  = currentMs - targetToMs(t);
-        console.log(`  🎯 uid=${uid.slice(0,8)} s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} currentMs=${currentMs}`);
-        console.log(`     diffBefore=${diffBefore} inWindowBefore=${inWindow(currentMs, t-b)}`);
-        console.log(`     diffExact=${diffExact}  inWindowExact=${inWindow(currentMs, t)}`);
-        console.log(`     fired=${JSON.stringify([...fired])}`);
-      }
 
       const toFire = [
         ...checkIntervalReturn(times, cfg, currentMs, fired),
@@ -250,7 +226,7 @@ exports.checkNotifications = onSchedule({
       ];
 
       if (toFire.length === 0) return;
-      console.log(`  🚀 Disparando ${toFire.length} notificação(ões) para uid=${uid.slice(0,8)}:`, toFire.map(f => f.key));
+      console.log(`  🚀 ${uid.slice(0,8)}: ${toFire.map(f => f.key).join(', ')}`);
 
       const newFired = [];
       for (const { key, title, body } of toFire) {
