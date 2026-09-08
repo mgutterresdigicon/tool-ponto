@@ -256,13 +256,14 @@ exports.checkNotifications = onSchedule({
       for (const { key, title, body } of toFire) {
         // Envia para todos os tokens do usuário, remove os inválidos
         let sent = false;
+        // Envia para TODOS os tokens do usuário (todos os dispositivos)
+        // Remove os inválidos automaticamente
         for (const { token, tokenDoc } of tokens) {
           const ua = tokenDoc.data().userAgent || 'desconhecido';
           try {
             await sendPush(token, title, body, key);
             console.log(`  📲 Enviado para: ${ua.slice(0, 60)}`);
             sent = true;
-            break;
           } catch (e) {
             if (e.invalidToken) {
               await tokenDoc.ref.delete();
