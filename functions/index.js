@@ -257,14 +257,16 @@ exports.checkNotifications = onSchedule({
         // Envia para todos os tokens do usuário, remove os inválidos
         let sent = false;
         for (const { token, tokenDoc } of tokens) {
+          const ua = tokenDoc.data().userAgent || 'desconhecido';
           try {
             await sendPush(token, title, body, key);
+            console.log(`  📲 Enviado para: ${ua.slice(0, 60)}`);
             sent = true;
-            break; // Enviou com sucesso — não precisa tentar os demais
+            break;
           } catch (e) {
             if (e.invalidToken) {
               await tokenDoc.ref.delete();
-              console.log(`  🗑️ Token inválido removido: ${token.slice(0,15)}...`);
+              console.log(`  🗑️ Token inválido removido (${ua.slice(0, 40)})`);
             }
           }
         }
