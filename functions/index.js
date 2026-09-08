@@ -209,7 +209,16 @@ exports.checkNotifications = onSchedule({
       };
 
       const firedSnap = await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).get();
-      const fired     = new Set(firedSnap.exists ? (firedSnap.data().keys || []) : []);
+      const firedData = firedSnap.exists ? firedSnap.data() : {};
+      const firedKeys = firedData.keys || [];
+
+      // Se a saída registrada mudou desde o último disparo, limpa o fired
+      // para não bloquear notificações com horários novos
+      const lastS1 = firedData.lastS1 ?? null;
+      const currentS1 = times.s1;
+      const fired = (lastS1 !== null && lastS1 !== currentS1)
+        ? new Set()   // saída mudou → reinicia deduplicação
+        : new Set(firedKeys);
 
       // Log de diagnóstico
       if (times.s1 != null && cfg.interval_return_enabled) {
@@ -245,7 +254,8 @@ exports.checkNotifications = onSchedule({
 
       if (newFired.length > 0) {
         await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).set({
-          keys: [...fired, ...newFired],
+          keys:      [...fired, ...newFired],
+          lastS1:    times.s1 ?? null,
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       }
