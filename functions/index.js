@@ -215,8 +215,12 @@ exports.checkNotifications = onSchedule({
       if (times.s1 != null && cfg.interval_return_enabled) {
         const t = times.s1 + (cfg.interval_return_time ?? 60);
         const b = cfg.interval_return_safe_before ?? 5;
-        const diff = currentMs - targetToMs(t - b);
-        console.log(`  🎯 uid=${uid.slice(0,8)} s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} currentMs=${currentMs} diff=${diff} inWindow=${inWindow(currentMs, t-b)}`);
+        const diffBefore = currentMs - targetToMs(t - b);
+        const diffExact  = currentMs - targetToMs(t);
+        console.log(`  🎯 uid=${uid.slice(0,8)} s1=${times.s1} target=${t} triggerBefore=${t-b} now=${now} currentMs=${currentMs}`);
+        console.log(`     diffBefore=${diffBefore} inWindowBefore=${inWindow(currentMs, t-b)}`);
+        console.log(`     diffExact=${diffExact}  inWindowExact=${inWindow(currentMs, t)}`);
+        console.log(`     fired=${JSON.stringify([...fired])}`);
       }
 
       const toFire = [
