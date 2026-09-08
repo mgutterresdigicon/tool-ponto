@@ -7,6 +7,18 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.4.1] - 2026-09-08
+
+### Corrigido
+
+- Regra 1 (retorno do intervalo): passa a usar `s2` como referência quando T3 está ativo (intervalo T2→T3), caso contrário `s1`. `before=0` dispara apenas o aviso exato.
+- Regra 2 (carga diária): alvo corrigido para **Saída Normal** da tabela (`e1 + carga + intervalos`), em vez de valor fixo. Só notifica quando `e2` está preenchida (ou `e3` com T3 ativo).
+- Regra 3 (turno máximo): limitado a T1 e T2 conforme especificação. T3 removido. `before=0` dispara apenas o aviso exato.
+- Regra 4 (jornada máxima): alvo corrigido para **Saída Extra** da tabela (`e1 + 600 + intervalos`), em vez de valor fixo.
+- Regra 5 (intervalo mínimo entre jornadas): cálculo passa a usar a última saída do **dia atual** (`s3 > s2 > s1`) em vez do dia anterior. `before=0` dispara apenas o aviso exato.
+- Removida janela de tolerância (`WINDOW_MIN`) no frontend — notificações agora disparam no minuto exato sem atraso.
+- Janela do backend (Cloud Scheduler) reduzida de 60s para 30s.
+
 ## [2.4.0] - 2026-09-07
 
 ### Adicionado

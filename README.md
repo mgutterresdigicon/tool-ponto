@@ -173,17 +173,17 @@ FIREBASE_PROJECT_ID=tool-ponto node ./tools/seed-data.js tools/backup-firestore-
 
 ### Notificações do sistema
 
-Requer permissão de notificação no navegador. Configurável pelo botão ⚙️:
+Requer permissão de notificação no navegador. Configurável pelo botão ⚙️. Funcionam mesmo com o app completamente fechado via FCM + Cloud Functions.
 
-| Regra | Descrição |
-|-------|-----------|
-| 📩 Retorno do intervalo | Avisa quando o tempo de intervalo está prestes a acabar |
-| 📊 Carga diária completa | Avisa quando a carga horária do dia está quase completa |
-| ⏱️ Turno máximo | Avisa quando um turno contínuo se aproxima do limite configurado |
-| 📅 Jornada máxima | Avisa quando o total trabalhado no dia está no limite |
-| 🌙 Intervalo mínimo entre jornadas | Avisa quando o descanso entre expedientes está no limite |
+| Regra | Descrição | Gatilho |
+|-------|-----------|---------|
+| 📩 Retorno do intervalo | Avisa quando o tempo de intervalo está prestes a acabar | Saída 1 preenchida (ou Saída 2 com T3 ativo) |
+| 📊 Carga diária completa | Avisa quando a Saída Normal da tabela está próxima | Entrada 2 preenchida (ou Entrada 3 com T3 ativo) |
+| ⏱️ Turno máximo | Avisa quando T1 ou T2 se aproxima do limite de duração | Entrada 1 ou Entrada 2 aberta (sem saída) |
+| 📅 Jornada máxima | Avisa quando a Saída Extra da tabela está próxima | Entrada 1 preenchida |
+| 🌙 Intervalo mínimo entre jornadas | Avisa quando o descanso após a última saída do dia está no limite | Última saída do dia (S1, S2 ou S3 com T3) |
 
-Cada regra dispara dois avisos: um antecipado (X minutos antes) e um no momento exato.
+Cada regra dispara dois avisos: um antecipado (X minutos antes, configurável) e um no momento exato. Configurar "Avisar antes" como `0` desativa o aviso antecipado — apenas o exato será enviado.
 
 ## Desenvolvimento
 
