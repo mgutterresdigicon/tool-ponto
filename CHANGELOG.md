@@ -5,7 +5,34 @@ Histórico das principais alterações do projeto.
 Este arquivo segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR),
 e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] - 2026-07-07
+## [Não publicado]
+
+## [2.4.0] - 2026-09-07
+
+### Adicionado
+
+- Notificações do sistema via FCM (Firebase Cloud Messaging) — funcionam mesmo com o app completamente fechado no celular.
+- Cloud Function `checkNotifications` agendada a cada minuto que verifica os horários registrados e envia push para todos os dispositivos do usuário.
+- 5 regras de notificação configuráveis: retorno do intervalo, carga diária completa, turno máximo, jornada máxima e intervalo mínimo entre jornadas.
+- Cada regra dispara dois avisos: antecipado (X min antes) e no momento exato.
+- Modal de configurações de notificações com botão X, textos de ajuda por seção e campos `type="time"` para duração.
+- Botão ⚙️ movido para a barra de ações principais (ao lado do 📁).
+- Toasts substituem modais informativos (✔ Salvo, ⚠ Aviso, ⚠ Erro).
+- PWA: `manifest.json` e ícone SVG — remove botão "Cancelar inscrição" nas notificações do Android.
+- Service Worker (`sw.js`) para exibir notificações no Chrome desktop via `showNotification()`.
+- Configurações de notificação salvas por usuário no Firestore (`config/{uid}/data/ponto_notification_settings`).
+- FCM tokens salvos por dispositivo no Firestore (`config/{uid}/fcm_tokens/{token}`).
+- `firestore.rules` versionado no repositório.
+- `tools/full-tool.js`: backup corrigido para capturar documentos implícitos via `listDocuments()`.
+- `tools/seed-data.js`: popula o emulador com dados de produção, detecta backup mais recente automaticamente.
+
+### Corrigido
+
+- Tick de minuto sincronizado no segundo `:00` do relógio (era baseado em epoch Unix, podia disparar em qualquer segundo).
+- Bug de falso positivo na detecção de nova versão: `normalizeVersion()` remove todo whitespace, fetch inicial usa `?t=Date.now()` para evitar cache.
+- Configurações de notificação agora sempre priorizadas do Firestore ao abrir o modal (sync entre dispositivos).
+- `toggleSetting` atualiza o botão diretamente sem recarregar do Firestore (evitava race condition).
+- Mapa `TOGGLE_BTN_IDS` para associar corretamente `settingId` ao ID do botão HTML (camelCase vs snake_case).
 
 ## [2.3.1] - 2026-07-07
 

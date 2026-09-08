@@ -148,14 +148,11 @@ onAuthStateChanged(auth, async user => {
     let allowed = false;
     try {
       const emails = await loadAllowedEmails();
-      console.log('Emails permitidos:', emails, 'User:', user.email);
       allowed = emails.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
     } catch(e) {
-      console.log('Erro ao carregar emails:', e);
       allowed = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     }
     if (!allowed) {
-      console.log('Acesso negado para:', user.email);
       try { localStorage.setItem('_deniedEmail', user.email); } catch(e) {}
       try { sessionStorage.setItem('_deniedEmail', user.email); } catch(e) {}
       const btnSol = document.getElementById("btn-solicitar");
