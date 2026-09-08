@@ -2,3 +2,14 @@
 *.log
 node_modules/
 .env
+
+# Backups gerados pelo full-tool.js
+tools/backup-firestore-*.json
+tools/converted-backup-*.json
+
+# Service account (chave privada — nunca commitar)
+tools/*adminsdk*.json
+tools/*service-account*.json
+
+# Editor
+.vscode/

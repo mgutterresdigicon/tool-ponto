@@ -8,7 +8,7 @@ export const ADMIN_EMAIL = "mgutterres.digicon@gmail.com";
 
 // ⚠️ VAPID key: gere em Firebase Console → Configurações do projeto
 //    → Cloud Messaging → Web Push certificates → Gerar par de chaves
-export const VAPID_KEY = "SUBSTITUA_PELA_SUA_VAPID_KEY_AQUI";
+export const VAPID_KEY = "BCi7zaTAw83ooPIsn32jRLJb_eXnJRV0FexnBCuTCo7jF7PmeztlwehhRygCKgKulgxykfqIXmOPqEnxg6WBzjU";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCG7q025r8RFRoZmcJynFUMvpJGuGNAC6k",
