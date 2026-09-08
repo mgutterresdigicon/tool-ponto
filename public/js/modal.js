@@ -1,4 +1,57 @@
+// ── Toast ────────────────────────────────────────────────────
+
+const TOAST_DURATION = 4000; // ms antes de sumir
+
+function showToast(title, msg) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  // Determinar variante pelo título
+  let variant = 'info';
+  let icon = 'ℹ️';
+  const t = title.toLowerCase();
+  if (t.includes('✔') || t.includes('salvo') || t.includes('enviado') || t.includes('importado')) {
+    variant = 'toast-success'; icon = '✅';
+  } else if (t.includes('erro')) {
+    variant = 'toast-error'; icon = '❌';
+  } else if (t.includes('⚠') || t.includes('aviso')) {
+    variant = 'toast-warn'; icon = '⚠️';
+  } else {
+    variant = 'toast-info'; icon = 'ℹ️';
+  }
+
+  const el = document.createElement('div');
+  el.className = `toast ${variant}`;
+  el.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      ${msg ? `<div class="toast-msg">${msg}</div>` : ''}
+    </div>
+  `;
+
+  // Clicar no toast o dispensa imediatamente
+  el.addEventListener('click', () => dismiss(el));
+  container.appendChild(el);
+
+  const timer = setTimeout(() => dismiss(el), TOAST_DURATION);
+
+  function dismiss(node) {
+    clearTimeout(timer);
+    node.classList.add('toast-hide');
+    node.addEventListener('animationend', () => node.remove(), { once: true });
+  }
+}
+
+// ── Modal (confirm / input) ───────────────────────────────────
+
 export function modal(title, msg, {input = false, confirm = false, defaultVal = ''} = {}) {
+  // Sem confirm nem input → toast informativo, resolve imediatamente
+  if (!input && !confirm) {
+    showToast(title, msg);
+    return Promise.resolve(true);
+  }
+
   return new Promise(resolve => {
     const bg = document.getElementById('modalBg');
     document.getElementById('modalTitle').textContent = title;
@@ -6,6 +59,7 @@ export function modal(title, msg, {input = false, confirm = false, defaultVal = 
     const inp = document.getElementById('modalInput');
     const cancel = document.getElementById('modalCancel');
     const ok = document.getElementById('modalOk');
+
     // Usar textarea se multilinha
     if (input && defaultVal.includes('\n')) {
       inp.style.display = 'none';

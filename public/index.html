@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Ponto</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕐</text></svg>">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00d4ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ponto">
 <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -45,7 +50,7 @@
       <label for="anoCtrl">Ano:</label>
       <button onclick="let a=document.getElementById('anoCtrl');a.value--;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">◀</button>
       <input type="text" id="anoCtrl" value="2026" readonly style="width:55px;text-align:center;font-weight:bold;border:none;background:transparent;color:#00d4ff;font-size:15px;padding:0">
-      <button onclick="let a=document.getElementById('anoCtrl');a.value++;a.dispatchEvent(new Event('change'))" style="padding:4px 8px">▶</button>
+      <button onclick="let b=document.getElementById('anoCtrl');b.value++;b.dispatchEvent(new Event('change'))" style="padding:4px 8px">▶</button>
     </div>
     <div class="group">
       <label for="selPeriodo">Período:</label>
@@ -75,6 +80,7 @@
       <button onclick="salvar()" title="Salvar todos os dados no servidor">💾 Salvar</button>
       <button onclick="toggleDias()" title="Mostrar/ocultar dias anteriores">📋 Mostrar linhas</button>
       <button class="btn-toggle-export" onclick="document.querySelector('.group-export').classList.toggle('show')" title="Opções de exportação">📁</button>
+      <button onclick="openSettings()" title="Configurações de notificações">⚙️</button>
     </div>
     <div class="group group-export">
       <button id="btnExport" title="Exportar período como CSV">CSV</button>
@@ -83,7 +89,8 @@
       <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="importJSON(event)">
     </div>
   </div>
-</div>
+
+  </div>
 
 <div class="app-middle">
   <table>
@@ -144,16 +151,19 @@
 <!-- JS Modules -->
 <script>
 let _appVersion = null;
-fetch('VERSION').then(r=>r.text()).then(v=>{
-  _appVersion = v.trim();
+// Normaliza a string de versão removendo qualquer whitespace invisível
+function normalizeVersion(v) { return v.replace(/\s/g, ''); }
+
+fetch('VERSION?t='+Date.now()).then(r=>r.text()).then(v=>{
+  _appVersion = normalizeVersion(v);
   document.getElementById('app-version').textContent='v'+_appVersion;
 });
 // Verificar atualização a cada 60s
 setInterval(async()=>{
   try {
     const r = await fetch('VERSION?t='+Date.now());
-    const v = (await r.text()).trim();
-    if (_appVersion && v !== _appVersion) {
+    const v = normalizeVersion(await r.text());
+    if (_appVersion && v && v !== _appVersion) {
       const btn = document.querySelector('.btn-refresh');
       if (btn) { btn.classList.add('pulse'); btn.style.display = 'inline-block'; btn.title = 'Nova versão disponível! Clique para atualizar'; }
     }
@@ -162,5 +172,124 @@ setInterval(async()=>{
 </script>
 <script type="module" src="js/auth.js"></script>
 <script type="module" src="js/ponto.js"></script>
+
+<!-- ========== CONFIGURAÇÕES DE NOTIFICAÇÕES ========== -->
+<div class="modal-bg" id="settingsModalBg">
+  <div class="modal settings-modal">
+    <div class="settings-modal-header">
+      <h3 id="settingsModalTitle">⚙️ Configurações de Notificações</h3>
+      <button class="settings-modal-close" onclick="closeSettings()" title="Fechar">✕</button>
+    </div>
+    <p id="settingsModalMsg"></p>
+
+    <!-- Texto introdutório -->
+    <div class="settings-help-intro">
+      <p>Configure quando o app deve enviar notificações do sistema durante o expediente. O navegador deve ter permissão para notificações — ao salvar, uma solicitação será feita se ainda não foi concedida.</p>
+      <p>Cada regra pode disparar <strong>dois avisos</strong>: um antecipado (X minutos antes) e um no momento exato do evento.</p>
+    </div>
+
+    <!-- Seção 1: Retorno do Intervalo -->
+    <div class="settings-section">
+      <h4>📩 Retorno do Intervalo</h4>
+      <p class="settings-help">Avisa quando o tempo de intervalo entre os turnos está prestes a acabar. Calculado a partir do horário de saída do 1º turno.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="intervalReturnToggle" onclick="toggleSetting('interval_return_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+      <div class="settings-row">
+        <label>Duração do intervalo:</label>
+        <input type="time" id="intervalReturnTime" value="01:00">
+      </div>
+      <div class="settings-row">
+        <label>Avisar antes:</label>
+        <input type="number" id="intervalReturnSafeBefore" value="5" min="1" max="60" class="input-min">
+        <span class="input-unit">min</span>
+      </div>
+    </div>
+
+    <!-- Seção 2: Carga Diária Completa -->
+    <div class="settings-section">
+      <h4>📊 Carga Diária Completa</h4>
+      <p class="settings-help">Avisa quando você está próximo de completar a carga horária diária configurada. Calculado a partir do horário de entrada do 1º turno.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="dailyLoadToggle" onclick="toggleSetting('daily_load_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+      <div class="settings-row">
+        <label>Carga diária:</label>
+        <input type="time" id="dailyLoadTime" value="08:48">
+      </div>
+      <div class="settings-row">
+        <label>Avisar antes:</label>
+        <input type="number" id="dailyLoadSafeBefore" value="5" min="1" max="60" class="input-min">
+        <span class="input-unit">min</span>
+      </div>
+    </div>
+
+    <!-- Seção 3: Turno Máximo -->
+    <div class="settings-section">
+      <h4>⏱️ Turno Máximo</h4>
+      <p class="settings-help">Avisa quando um turno contínuo (entrada → saída) está se aproximando do limite máximo configurado. Útil para lembrar de registrar a saída para o intervalo.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="shiftMaxToggle" onclick="toggleSetting('shift_max_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+      <div class="settings-row">
+        <label>Duração máxima do turno:</label>
+        <input type="time" id="shiftMaxTime" value="06:00">
+      </div>
+      <div class="settings-row">
+        <label>Avisar antes:</label>
+        <input type="number" id="shiftMaxSafeBefore" value="10" min="1" max="60" class="input-min">
+        <span class="input-unit">min</span>
+      </div>
+    </div>
+
+    <!-- Seção 4: Jornada Máxima -->
+    <div class="settings-section">
+      <h4>📅 Jornada Máxima</h4>
+      <p class="settings-help">Avisa quando o total trabalhado no dia (soma de todos os turnos) está prestes a atingir o limite legal ou configurado. Ajuda a evitar horas extras não planejadas.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="workdayMaxToggle" onclick="toggleSetting('workday_max_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+      <div class="settings-row">
+        <label>Jornada máxima:</label>
+        <input type="time" id="workdayMaxTime" value="10:00">
+      </div>
+      <div class="settings-row">
+        <label>Avisar antes:</label>
+        <input type="number" id="workdayMaxSafeBefore" value="10" min="1" max="60" class="input-min">
+        <span class="input-unit">min</span>
+      </div>
+    </div>
+
+    <!-- Seção 5: Intervalo Mínimo entre Jornadas -->
+    <div class="settings-section">
+      <h4>🌙 Intervalo Mínimo entre Jornadas</h4>
+      <p class="settings-help">Avisa quando o intervalo de descanso entre o fim de um expediente e o início do próximo está quase no mínimo legal (11 horas pela CLT). Calculado a partir do último horário de saída registrado.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="minIntervalToggle" onclick="toggleSetting('min_interval_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+      <div class="settings-row">
+        <label>Intervalo mínimo:</label>
+        <input type="time" id="minIntervalTime" value="11:00">
+      </div>
+      <div class="settings-row">
+        <label>Avisar antes:</label>
+        <input type="number" id="minIntervalSafeBefore" value="15" min="1" max="60" class="input-min">
+        <span class="input-unit">min</span>
+      </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div class="settings-actions">
+      <button onclick="saveNotificationForm()" class="btn-save-settings">💾 Salvar</button>
+      <button onclick="resetSettings()" class="btn-reset-settings">🔄 Resetar Padrões</button>
+    </div>
+  </div>
+</div>
+<div id="toast-container"></div>
 </body>
 </html>

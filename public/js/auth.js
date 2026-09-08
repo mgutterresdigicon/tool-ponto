@@ -1,6 +1,6 @@
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails } from "./firebase-config.js";
+import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails, registerFCMToken } from "./firebase-config.js";
 import { state } from "./state.js";
 import { modal } from "./modal.js";
 
@@ -148,14 +148,11 @@ onAuthStateChanged(auth, async user => {
     let allowed = false;
     try {
       const emails = await loadAllowedEmails();
-      console.log('Emails permitidos:', emails, 'User:', user.email);
       allowed = emails.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
     } catch(e) {
-      console.log('Erro ao carregar emails:', e);
       allowed = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     }
     if (!allowed) {
-      console.log('Acesso negado para:', user.email);
       try { localStorage.setItem('_deniedEmail', user.email); } catch(e) {}
       try { sessionStorage.setItem('_deniedEmail', user.email); } catch(e) {}
       const btnSol = document.getElementById("btn-solicitar");
@@ -193,6 +190,19 @@ onAuthStateChanged(auth, async user => {
     if (window.loadPeriodo) {
       if (window.restorePeriodoLabels) await window.restorePeriodoLabels();
       await window.loadPeriodo();
+    }
+    // Registrar Service Worker para notificações
+    // Cancela registros anteriores para garantir estado limpo após updates
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        const old = registrations.filter(r => !r.active || r.active.scriptURL.includes('sw.js'));
+        return Promise.all(old.map(r => r.unregister()));
+      }).then(() => {
+        return navigator.serviceWorker.register('/sw.js');
+      }).then(() => {
+        // Registrar FCM token após SW ativo (necessário para push com app fechado)
+        registerFCMToken(user.uid);
+      }).catch(e => console.warn('[sw] Falha ao registrar:', e));
     }
     // Polling de solicitações a cada 60s
     if (!window._solPoll) {

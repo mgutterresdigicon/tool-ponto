@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // E-mails permitidos — leitura por qualquer autenticado, escrita só pelo admin
+    match /config/allowed_emails {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'mgutterres.digicon@gmail.com';
+    }
+
+    // Solicitações de acesso — qualquer um cria, só admin lê/deleta
+    match /solicitacoes/{email} {
+      allow create: if true;
+      allow read, delete: if request.auth != null
+                          && request.auth.token.email == 'mgutterres.digicon@gmail.com';
+    }
+
+    // Dados de ponto — apenas o próprio usuário
+    match /pontos/{uid}/periodos/{docId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid;
+    }
+
+    // Configurações do usuário (settings, notification_settings, periodos)
+    match /config/{uid}/data/{docId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid;
+    }
+
+    // FCM tokens — o próprio usuário cria/atualiza/deleta seus tokens
+    match /config/{uid}/fcm_tokens/{token} {
+      allow read, write, delete: if request.auth != null
+                                 && request.auth.uid == uid;
+    }
+  }
+}
