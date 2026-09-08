@@ -80,8 +80,9 @@ function fmt(min) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
-// Janela de tolerância: 1 minuto cobre imprecisão do tick sem atrasar
-const WINDOW_MIN = 1;
+// Janela de tolerância: 0 — disparo exato no minuto alvo.
+// O tick é sincronizado em :00s do relógio, sem necessidade de margem.
+const WINDOW_MIN = 0;
 
 // Tenta disparar aviso antecipado e/ou exato.
 // before=0: não dispara antecipado — apenas o exato.
@@ -91,18 +92,17 @@ function tryFire(key, targetMin, beforeMin, titleExact, bodyExact, titleBefore, 
   const keyExact  = key + '_exact';
 
   if (beforeMin > 0 && !_firedToday.has(keyBefore)) {
-    const triggerMin = targetMin - beforeMin;
-    if (now >= triggerMin && now <= triggerMin + WINDOW_MIN) {
+    if (now === targetMin - beforeMin) {
       send(titleBefore, bodyBefore, keyBefore);
       _firedToday.add(keyBefore);
       // Agenda o exato no SW para quando o app estiver suspenso
-      const delayMs = (targetMin - now) * 60 * 1000;
+      const delayMs = beforeMin * 60 * 1000;
       scheduleInSW(delayMs, titleExact, bodyExact, keyExact);
     }
   }
 
   if (!_firedToday.has(keyExact)) {
-    if (now >= targetMin && now <= targetMin + WINDOW_MIN) {
+    if (now === targetMin) {
       send(titleExact, bodyExact, keyExact);
       _firedToday.add(keyExact);
     }

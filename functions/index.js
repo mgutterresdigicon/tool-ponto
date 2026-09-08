@@ -31,10 +31,11 @@ function nowMin(brt)  { return brt.getHours() * 60 + brt.getMinutes(); }
 function nowMs(brt)   { return (brt.getHours() * 3600 + brt.getMinutes() * 60 + brt.getSeconds()) * 1000; }
 function targetToMs(m){ return m * 60 * 1000; }
 
-// Janela de disparo: -30s a +60s do alvo (cobre atraso do scheduler)
+// Janela de disparo: -30s a +30s do alvo
+// Cobre atraso típico do Cloud Scheduler (~0-30s) sem atrasar 1 minuto
 function inWindow(currentMs, target) {
   const d = currentMs - targetToMs(target);
-  return d >= -30000 && d <= 60000;
+  return d >= -30000 && d <= 30000;
 }
 
 function fmt(min) {
