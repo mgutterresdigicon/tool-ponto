@@ -167,9 +167,19 @@ exports.checkNotifications = onSchedule({
   }
   console.log(`📱 Tokens encontrados: ${tokensSnap.size}`);
 
-  const promises = tokensSnap.docs.map(async tokenDoc => {
+  // Agrupar tokens por uid para processar um uid de cada vez
+  // Evita disparar múltiplas notificações para o mesmo usuário
+  const tokensByUid = new Map();
+  for (const tokenDoc of tokensSnap.docs) {
     const { token, uid } = tokenDoc.data();
-    if (!token || !uid) return;
+    if (!token || !uid) continue;
+    if (!tokensByUid.has(uid)) tokensByUid.set(uid, []);
+    tokensByUid.get(uid).push({ token, tokenDoc });
+  }
+
+  console.log(`👥 Usuários únicos: ${tokensByUid.size}`);
+
+  const promises = [...tokensByUid.entries()].map(async ([uid, tokens]) => {
 
     try {
       const cfgSnap = await db.doc(`config/${uid}/data/ponto_notification_settings`).get();
@@ -244,12 +254,21 @@ exports.checkNotifications = onSchedule({
 
       const newFired = [];
       for (const { key, title, body } of toFire) {
-        try {
-          await sendPush(token, title, body, key);
-          newFired.push(key);
-        } catch (e) {
-          if (e.invalidToken) { await tokenDoc.ref.delete(); return; }
+        // Envia para todos os tokens do usuário, remove os inválidos
+        let sent = false;
+        for (const { token, tokenDoc } of tokens) {
+          try {
+            await sendPush(token, title, body, key);
+            sent = true;
+            break; // Enviou com sucesso — não precisa tentar os demais
+          } catch (e) {
+            if (e.invalidToken) {
+              await tokenDoc.ref.delete();
+              console.log(`  🗑️ Token inválido removido: ${token.slice(0,15)}...`);
+            }
+          }
         }
+        if (sent) newFired.push(key);
       }
 
       if (newFired.length > 0) {
