@@ -7,6 +7,13 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.4.2] - 2026-09-09
+
+### Corrigido
+
+- Duplicação de notificações: `send()` agora usa exclusivamente o Service Worker quando disponível. Antes, `new Notification()` e `reg.showNotification()` eram chamados em paralelo com tags diferentes, resultando em 2 notificações para o mesmo evento.
+- Carga diária completa: regra agora exige que o turno correspondente esteja **aberto** (sem saída registrada) para disparar. Antes disparava mesmo após o expediente encerrado.
+
 ## [2.4.1] - 2026-09-08
 
 ### Corrigido

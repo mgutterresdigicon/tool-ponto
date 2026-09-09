@@ -105,11 +105,13 @@ function checkIntervalReturn(t, cfg, ms, fired) {
   return out;
 }
 
-// 2. Carga diária: Saída Normal — gatilho: e2 ou e3 com T3
+// 2. Carga diária: Saída Normal — gatilho: e2 ou e3 com T3, turno ainda aberto
 function checkDailyLoad(t, cfg, ms, fired) {
   if (!cfg.daily_load_enabled) return [];
-  const entradaAtiva = (t.hasT3 && t.e3 != null) || t.e2 != null;
-  if (!entradaAtiva) return [];
+  // Exige que o turno correspondente esteja aberto (sem saída)
+  const emT2Aberto = !t.hasT3 && t.e2 != null && t.s2 == null;
+  const emT3Aberto =  t.hasT3 && t.e3 != null && t.s3 == null;
+  if (!emT2Aberto && !emT3Aberto) return [];
 
   const target = calcNormal(t);
   if (target == null) return [];

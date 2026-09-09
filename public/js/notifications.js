@@ -40,20 +40,18 @@ export async function requestNotificationPermission() {
 function send(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Tenta new Notification() primeiro (Android/Firefox/Safari)
-  let sentDirect = false;
-  try {
-    new Notification(title, { body, tag, silent: false });
-    sentDirect = true;
-  } catch (_) {
-    // Chrome desktop bloqueia — usa SW abaixo
-  }
-
+  // Usa SW quando disponível — evita duplicação pois new Notification()
+  // e reg.showNotification() disparam notificações independentes.
+  // new Notification() é fallback apenas quando não há SW (Firefox sem SW, Safari).
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
-      const swTag = sentDirect ? tag + '_sw' : tag;
-      reg.showNotification(title, { body, tag: swTag, requireInteraction: false, silent: false });
-    }).catch(() => {});
+      reg.showNotification(title, { body, tag, requireInteraction: false, silent: false });
+    }).catch(() => {
+      // SW falhou — tenta direto
+      try { new Notification(title, { body, tag, silent: false }); } catch (_) {}
+    });
+  } else {
+    try { new Notification(title, { body, tag, silent: false }); } catch (_) {}
   }
 }
 
@@ -187,14 +185,16 @@ function checkIntervalReturn(times, cfg, dateKey) {
 }
 
 // 2. Carga diária completa
-//    Gatilho: e2 preenchida (ou e3 preenchida com T3 ativo)
+//    Gatilho: e2 preenchida (ou e3 com T3) E o turno correspondente ainda aberto (sem saída)
 //    Alvo: Saída Normal da tabela
 function checkDailyLoad(times, cfg, dateKey) {
   if (!cfg.daily_load_enabled) return;
 
-  // Só notifica se o usuário já entrou no 2º turno (ou 3º com T3)
-  const entradaAtiva = (times.hasT3 && times.e3 != null) || times.e2 != null;
-  if (!entradaAtiva) return;
+  // Verifica se o usuário está no 2º ou 3º turno E o turno está aberto (sem saída)
+  const noT3 = !times.hasT3;
+  const emT2Aberto = noT3  && times.e2 != null && times.s2 == null;
+  const emT3Aberto = times.hasT3 && times.e3 != null && times.s3 == null;
+  if (!emT2Aberto && !emT3Aberto) return;
 
   const target = calcNormal(times);
   if (target == null) return;
