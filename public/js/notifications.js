@@ -239,9 +239,17 @@ function checkShiftMax(times, cfg, dateKey) {
 
 // 4. Jornada máxima
 //    Alvo: Saída Extra da tabela (e1 + 600 + intervalos)
+//    Gatilho: existe uma entrada aberta (sem saída correspondente)
 function checkWorkdayMax(times, cfg, dateKey) {
   if (!cfg.workday_max_enabled) return;
   if (times.e1 == null) return;
+
+  // Verifica se há algum turno ainda aberto
+  const algumTurnoAberto =
+    (times.hasT3 && times.e3 != null && times.s3 == null) ||
+    (!times.hasT3 && times.e2 != null && times.s2 == null) ||
+    (times.e2 == null && times.s1 == null); // apenas T1 e ainda aberto
+  if (!algumTurnoAberto) return;
 
   const target = calcExtra(times);
   if (target == null) return;

@@ -147,9 +147,18 @@ function checkShiftMax(t, cfg, ms, fired) {
   return out;
 }
 
-// 4. Jornada máxima: Saída Extra da tabela
+// 4. Jornada máxima: Saída Extra — gatilho: entrada aberta sem saída
 function checkWorkdayMax(t, cfg, ms, fired) {
   if (!cfg.workday_max_enabled) return [];
+  if (t.e1 == null) return [];
+
+  // Verifica se há algum turno ainda aberto
+  const algumTurnoAberto =
+    (t.hasT3 && t.e3 != null && t.s3 == null) ||
+    (!t.hasT3 && t.e2 != null && t.s2 == null) ||
+    (t.e2 == null && t.s1 == null);
+  if (!algumTurnoAberto) return [];
+
   const target = calcExtra(t);
   if (target == null) return [];
 
@@ -253,10 +262,12 @@ exports.checkNotifications = onSchedule({
         carga: timeToMin(row[2]) ?? 528,
       };
 
-      // Deduplicação — reseta se s1 mudou
+      // Deduplicação — reseta se qualquer horário da linha mudou
       const firedSnap = await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).get();
       const firedData = firedSnap.exists ? firedSnap.data() : {};
-      const fired = (firedData.lastS1 != null && firedData.lastS1 !== t.s1)
+      // Assinatura da linha: concatena todos os horários para detectar qualquer mudança
+      const rowSig = [t.e1, t.s1, t.e2, t.s2, t.e3, t.s3].join(',');
+      const fired = (firedData.rowSig != null && firedData.rowSig !== rowSig)
         ? new Set()
         : new Set(firedData.keys || []);
 
@@ -290,7 +301,7 @@ exports.checkNotifications = onSchedule({
       if (newFired.length > 0) {
         await db.doc(`config/${uid}/data/notif_fired_${dateKey}`).set({
           keys:      [...fired, ...newFired],
-          lastS1:    t.s1 ?? null,
+          rowSig,
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       }

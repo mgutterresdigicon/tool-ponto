@@ -7,6 +7,13 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.4.3] - 2026-09-09
+
+### Corrigido
+
+- Jornada máxima: regra agora exige entrada aberta (sem saída correspondente), igual à carga diária. Não dispara mais após o expediente encerrado.
+- Backend: reset do `fired` agora usa assinatura completa da linha (`e1,s1,e2,s2,e3,s3`) em vez de apenas `s1`. Qualquer alteração nos horários registrados invalida o cache e evita atraso nas notificações por deduplicação obsoleta.
+
 ## [2.4.2] - 2026-09-09
 
 ### Corrigido
