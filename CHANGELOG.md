@@ -7,6 +7,14 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.4.4] - 2026-09-10
+
+### Corrigido
+
+- Duplicação/triplicação de notificações causada pelo reset global do `fired` via `rowSig`: qualquer alteração nos horários zerava todas as chaves, fazendo regras cujo alvo já passou dispararem novamente.
+- Nova lógica de deduplicação por **target**: `fired[key] = target` (minutos). Uma notificação só é bloqueada se o `target` calculado agora for igual ao que foi salvo no disparo anterior. Se os horários mudaram (novo `target`), dispara automaticamente para o novo horário sem resetar outras regras.
+- Mesma lógica aplicada no frontend (`notifications.js`) e backend (`functions/index.js`).
+
 ## [2.4.3] - 2026-09-09
 
 ### Corrigido

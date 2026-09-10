@@ -16,15 +16,25 @@
 import { timeToMin } from './ponto.js';
 
 // ── Estado interno ────────────────────────────────────────────
-let _firedToday = new Set();
+// fired: Map { key → target } — deduplicação por target, não por chave pura
+// Se o target de uma regra muda (horário registrado mudou), dispara de novo.
+let _firedToday = new Map();
 let _trackedDay = -1;
 
 function resetIfNewDay() {
   const today = new Date().getDate();
   if (today !== _trackedDay) {
-    _firedToday.clear();
+    _firedToday = new Map();
     _trackedDay = today;
   }
+}
+
+function alreadyFired(key, target) {
+  return _firedToday.get(key) === target;
+}
+
+function markFired(key, target) {
+  _firedToday.set(key, target);
 }
 
 // ── Permissão ─────────────────────────────────────────────────
@@ -84,25 +94,27 @@ const WINDOW_MIN = 0;
 
 // Tenta disparar aviso antecipado e/ou exato.
 // before=0: não dispara antecipado — apenas o exato.
+// Deduplicação por target: se os horários mudaram, dispara de novo.
 function tryFire(key, targetMin, beforeMin, titleExact, bodyExact, titleBefore, bodyBefore) {
   const now       = nowMin();
   const keyBefore = key + '_before';
   const keyExact  = key + '_exact';
+  const triggerBefore = targetMin - beforeMin;
 
-  if (beforeMin > 0 && !_firedToday.has(keyBefore)) {
-    if (now === targetMin - beforeMin) {
+  if (beforeMin > 0 && !alreadyFired(keyBefore, triggerBefore)) {
+    if (now === triggerBefore) {
       send(titleBefore, bodyBefore, keyBefore);
-      _firedToday.add(keyBefore);
+      markFired(keyBefore, triggerBefore);
       // Agenda o exato no SW para quando o app estiver suspenso
       const delayMs = beforeMin * 60 * 1000;
       scheduleInSW(delayMs, titleExact, bodyExact, keyExact);
     }
   }
 
-  if (!_firedToday.has(keyExact)) {
+  if (!alreadyFired(keyExact, targetMin)) {
     if (now === targetMin) {
       send(titleExact, bodyExact, keyExact);
-      _firedToday.add(keyExact);
+      markFired(keyExact, targetMin);
     }
   }
 }
