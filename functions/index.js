@@ -208,6 +208,13 @@ exports.checkNotifications = onSchedule({
   const now       = nowMin(brt);
   const dateKey   = `${brt.getFullYear()}${String(brt.getMonth()+1).padStart(2,'0')}${String(brt.getDate()).padStart(2,'0')}`;
 
+  // Não notificar em fins de semana (0=Dom, 6=Sáb)
+  const diaSemana = brt.getDay();
+  if (diaSemana === 0 || diaSemana === 6) {
+    console.log(`⏭️ ${fmt(now)} — fim de semana, sem notificações.`);
+    return;
+  }
+
   const tokensSnap = await db.collectionGroup('fcm_tokens').get();
   if (tokensSnap.empty) return;
 

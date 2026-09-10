@@ -219,6 +219,11 @@ function checkMinInterval(times, cfg, dateKey) {
 export function checkNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
+  // Não notificar em fins de semana
+  const now = new Date();
+  const diaSemana = now.getDay(); // 0=Dom, 6=Sáb
+  if (diaSemana === 0 || diaSemana === 6) return;
+
   resetIfNewDay();
 
   const raw = localStorage.getItem('ponto_notification_settings');
