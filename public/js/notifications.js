@@ -219,17 +219,15 @@ function checkMinInterval(times, cfg, dateKey) {
 export function checkNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Não notificar em fins de semana
-  const now = new Date();
-  const diaSemana = now.getDay(); // 0=Dom, 6=Sáb
-  if (diaSemana === 0 || diaSemana === 6) return;
+  // Não notificar em fins de semana (0=Dom, 6=Sáb)
+  const hoje = new Date();
+  if (hoje.getDay() === 0 || hoje.getDay() === 6) return;
 
   resetIfNewDay();
 
   const raw = localStorage.getItem('ponto_notification_settings');
   const cfg = raw ? JSON.parse(raw) : {};
-  const now = new Date();
-  const dateKey = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const dateKey = `${hoje.getFullYear()}${String(hoje.getMonth()+1).padStart(2,'0')}${String(hoje.getDate()).padStart(2,'0')}`;
 
   const times = getRowTimes(getTodayRow());
   if (!times) return;
