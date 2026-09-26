@@ -1,11 +1,24 @@
 // ============================================================
-// notifications.js — Disparo de notificações do sistema (frontend)
+// notifications.js — Notificações do sistema (frontend)
 //
-// Deduplicação por target: _firedToday.get(key) === target
+// Arquitetura:
+//   - Fonte principal: Cloud Function (FCM backend) → envia push a cada minuto.
+//   - Foreground: onMessage do FCM → frontend exibe a notificação recebida do backend.
+//   - Fallback: checkNotifications() → só ativa quando SW indisponível ou offline.
+//
+// Deduplicação no fallback por target: _firedToday.get(key) === target
 // Se target muda (horários alterados) → dispara de novo.
 // ============================================================
 
-import { timeToMin } from './ponto.js';
+import { onMessage } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js';
+
+// Cópia local para evitar dependência circular com ponto.js
+function timeToMin(str) {
+  if (!str || str.trim() === '') return null;
+  const [h, m] = str.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
 
 // ── Estado interno ────────────────────────────────────────────
 let _firedToday = new Map(); // { key → target }
@@ -36,7 +49,7 @@ function send(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, { body, tag, requireInteraction: false, silent: false });
+      reg.showNotification(title, { body, tag, icon: '/icon-notification-96.png', badge: '/icon-notification-72.png', requireInteraction: false, silent: false });
     }).catch(() => {
       try { new Notification(title, { body, tag, silent: false }); } catch (_) {}
     });
@@ -45,7 +58,50 @@ function send(title, body, tag) {
   }
 }
 
+// ── FCM Foreground ────────────────────────────────────────────
+//
+// Quando o app está em foreground, o FCM não exibe notificação automaticamente.
+// Esta função escuta onMessage e exibe via SW (ou Notification API como fallback).
+// Deve ser chamada uma única vez após o login, passando o objeto `messaging`.
+//
+// Resultado: app aberto ou fechado → uma única notificação (sem duplicação).
+let _fcmForegroundInit = false;
+export function initFCMForeground(messaging) {
+  if (_fcmForegroundInit) return;
+  _fcmForegroundInit = true;
+
+  onMessage(messaging, payload => {
+    const { title, body } = payload.notification || {};
+    const tag = payload.data?.tag || 'ponto-notif';
+    if (!title) return;
+
+    // Exibe via SW para consistência visual (ícone, badge, som)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.showNotification(title, {
+          body,
+          tag,
+          icon:               '/icon-notification-96.png',
+          badge:              '/icon-notification-72.png',
+          requireInteraction: false,
+        });
+      }).catch(() => {
+        try { new Notification(title, { body, tag, silent: false }); } catch (_) {}
+      });
+    } else {
+      try { new Notification(title, { body, tag, silent: false }); } catch (_) {}
+    }
+  });
+}
+
 function scheduleInSW(delayMs, title, body, tag) {
+  // Não agendar via SW quando FCM backend está ativo — ele já envia o exato.
+  // Só agenda no fallback (offline), mas o fallback não usa tryFire com before>0
+  // de forma que chegue aqui apenas em casos sem backend.
+  const swAtivo = 'serviceWorker' in navigator && navigator.serviceWorker.controller != null;
+  const online  = navigator.onLine !== false;
+  if (swAtivo && online) return; // FCM cuida — não duplicar
+
   if (!('serviceWorker' in navigator) || delayMs <= 0) return;
   navigator.serviceWorker.ready.then(reg => {
     if (reg.active) reg.active.postMessage({ type: 'SCHEDULE_NOTIFICATION', delayMs, title, body, tag });
@@ -216,10 +272,28 @@ function checkMinInterval(times, cfg, dateKey) {
 }
 
 // ── Ponto de entrada público ──────────────────────────────────
+//
+// O disparo principal é feito pela Cloud Function (FCM) — sempre ativa,
+// mesmo com o app fechado, sem duplicação entre dispositivos.
+//
+// Foreground: initFCMForeground() escuta onMessage e exibe a notificação
+// recebida do backend quando o app está aberto.
+//
+// Fallback: este checkNotifications() só executa quando:
+//   - Não há Service Worker registrado (offline / SW falhou)
+//   - O navigator.onLine é false (sem conexão)
+//
+// Quando o app está online com SW ativo, o FCM já cuida das notificações.
+// Manter o frontend calculando também causaria duplicação.
 export function checkNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Não notificar em fins de semana (0=Dom, 6=Sáb)
+  // Se há SW e app está online → FCM backend cuida. Frontend não dispara.
+  const swAtivo  = 'serviceWorker' in navigator && navigator.serviceWorker.controller != null;
+  const online   = navigator.onLine !== false;
+  if (swAtivo && online) return;
+
+  // Fallback: SW não disponível ou offline
   const hoje = new Date();
   if (hoje.getDay() === 0 || hoje.getDay() === 6) return;
 

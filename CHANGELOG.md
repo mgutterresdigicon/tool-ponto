@@ -7,6 +7,17 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.4.5] - 2026-09-26
+
+### Alterado
+
+- Notificações agora têm o FCM backend como **única fonte de verdade**, eliminando duplicações.
+  - App aberto (foreground): `initFCMForeground()` escuta `onMessage` do FCM e exibe a notificação recebida do backend via Service Worker. O frontend não calcula nem dispara mais nada enquanto online.
+  - App fechado (background): `onBackgroundMessage` no `sw.js` exibe normalmente via push FCM (sem alteração).
+  - Offline / SW indisponível: `checkNotifications()` continua como fallback (comportamento preservado).
+- `notifications.js`: removida dependência circular em `ponto.js` — `timeToMin` agora é cópia local.
+- `auth.js`: chama `initFCMForeground(messaging)` após o registro do SW e do token FCM.
+
 ## [2.4.4] - 2026-09-10
 
 ### Corrigido

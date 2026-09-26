@@ -1,8 +1,9 @@
 import { signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails, registerFCMToken } from "./firebase-config.js";
+import { auth, db, provider, ADMIN_EMAIL, loadAllowedEmails, saveAllowedEmails, registerFCMToken, messaging } from "./firebase-config.js";
 import { state } from "./state.js";
 import { modal } from "./modal.js";
+import { initFCMForeground } from "./notifications.js";
 
 window.doLogin = async () => {
   try { await signInWithPopup(auth, provider); }
@@ -202,6 +203,8 @@ onAuthStateChanged(auth, async user => {
       }).then(() => {
         // Registrar FCM token após SW ativo (necessário para push com app fechado)
         registerFCMToken(user.uid);
+        // Escutar mensagens FCM quando o app está em foreground (exibe notificação recebida do backend)
+        initFCMForeground(messaging);
       }).catch(e => console.warn('[sw] Falha ao registrar:', e));
     }
     // Polling de solicitações a cada 60s

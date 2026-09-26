@@ -28,8 +28,8 @@ fcmMessaging.onBackgroundMessage(payload => {
   self.registration.showNotification(title, {
     body,
     tag,
-    icon:               '/icon.svg',
-    badge:              '/icon.svg',
+    icon:               '/icon-notification-96.png',
+    badge:              '/icon-notification-72.png',
     requireInteraction: false,
   });
 });
@@ -45,7 +45,7 @@ self.addEventListener('message', event => {
   if (event.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, tag } = event.data;
     self.registration.showNotification(title, {
-      body, tag, icon: '/icon.svg', badge: '/icon.svg',
+      body, tag, icon: '/icon-notification-96.png', badge: '/icon-notification-72.png',
       requireInteraction: false,
     });
   }
@@ -55,7 +55,7 @@ self.addEventListener('message', event => {
     if (!delayMs || delayMs <= 0) return;
     setTimeout(() => {
       self.registration.showNotification(title, {
-        body, tag, icon: '/icon.svg', badge: '/icon.svg',
+        body, tag, icon: '/icon-notification-96.png', badge: '/icon-notification-72.png',
         requireInteraction: false,
       });
     }, delayMs);
