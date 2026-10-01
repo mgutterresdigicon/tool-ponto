@@ -7,6 +7,20 @@ e este projeto segue o [versionamento semântico](https://semver.org/lang/pt-BR/
 
 ## [Não publicado]
 
+## [2.5.0] - 2026-10-01
+
+### Adicionado
+
+- Notificação **HE Diária Zerada** (⚖️): avisa quando as horas extras do dia cruzam zero, tanto de positivo→zero quanto de negativo→zero. Configurável no modal de notificações.
+- Notificação **HE Acumulada Zerada** (⚖️): avisa quando o saldo acumulado do período inteiro cruza zero. Configurável independentemente.
+- Merge automático: quando HE diária e acumulada zeram no mesmo minuto, é enviada uma única notificação combinada em vez de duas separadas.
+- Deduplicação por transição de sinal: cada cruzamento de zero dispara apenas uma vez por dia (armazenado em `notif_fired_{dateKey}` no Firestore).
+
+### Corrigido
+
+- Duplicação de notificações no foreground: payload FCM agora usa apenas `data` (sem campo `notification`), impedindo que o Firebase SDK exiba automaticamente uma notificação sem ícone. O display é 100% controlado por `onMessage` (app aberto) e `onBackgroundMessage` (app fechado).
+- Ícones de notificação no Android: trocados de SVG para PNGs com canal alfa (`icon-notification-96.png` / `72.png`), corrigindo o quadrado sólido que aparecia antes.
+
 ## [2.4.5] - 2026-09-26
 
 ### Alterado

@@ -71,8 +71,10 @@ export function initFCMForeground(messaging) {
   _fcmForegroundInit = true;
 
   onMessage(messaging, payload => {
-    const { title, body } = payload.notification || {};
-    const tag = payload.data?.tag || 'ponto-notif';
+    // title/body vêm em payload.data (sem campo notification no envio)
+    const title = payload.data?.title || payload.notification?.title;
+    const body  = payload.data?.body  || payload.notification?.body;
+    const tag   = payload.data?.tag   || 'ponto-notif';
     if (!title) return;
 
     // Exibe via SW para consistência visual (ícone, badge, som)
@@ -271,6 +273,67 @@ function checkMinInterval(times, cfg, dateKey) {
   }
 }
 
+// HE diária zerando — dispara quando o HE do dia cruza zero (positivo→zero ou negativo→zero).
+// Deduplicação: armazena o sinal anterior. Só dispara uma vez por transição de sinal por dia.
+// heNow: valor em minutos calculado da linha de hoje (pode ser null se turno não concluído).
+function checkHeZero(heNow, cfg, dateKey) {
+  if (!cfg.he_zero_enabled) return;
+  if (heNow == null) return;
+
+  // heNow dentro da tolerância de ±5 min é considerado "zero"
+  const TOL = 5;
+  const isZero = Math.abs(heNow) <= TOL;
+  if (!isZero) {
+    // Atualizar sinal anterior quando não é zero (para detectar a próxima transição)
+    const sigKey = `${dateKey}_he_zero_prev_sign`;
+    const prevSign = _firedToday.get(sigKey);
+    const curSign  = heNow > 0 ? 1 : -1;
+    if (prevSign !== curSign) markFired(sigKey, curSign);
+    return;
+  }
+
+  const sigKey     = `${dateKey}_he_zero_prev_sign`;
+  const firedKey   = `${dateKey}_he_zero_fired`;
+  const prevSign   = _firedToday.get(sigKey);
+  const alreadyDone = _firedToday.get(firedKey);
+
+  // Só dispara se havia sinal definido antes (evita disparar no início do dia com he=0)
+  // e se ainda não disparou para esta transição
+  if (prevSign == null || alreadyDone) return;
+
+  const dir = prevSign > 0 ? 'positivas' : 'negativas';
+  send('⚖️ HE Diária Zerada', `As horas extras do dia zeraram (vinham ${dir}).`, `${dateKey}_he_zero`);
+  markFired(firedKey, 1);
+}
+
+// HE acumulada zerando — mesma lógica, mas para o saldo acumulado do período.
+// heAcumNow: último valor de sumHE do período (lido do DOM da última linha preenchida).
+function checkHeAcumZero(heAcumNow, cfg, dateKey) {
+  if (!cfg.he_acum_zero_enabled) return;
+  if (heAcumNow == null) return;
+
+  const TOL    = 5;
+  const isZero = Math.abs(heAcumNow) <= TOL;
+  if (!isZero) {
+    const sigKey  = `${dateKey}_he_acum_zero_prev_sign`;
+    const prevSign = _firedToday.get(sigKey);
+    const curSign  = heAcumNow > 0 ? 1 : -1;
+    if (prevSign !== curSign) markFired(sigKey, curSign);
+    return;
+  }
+
+  const sigKey     = `${dateKey}_he_acum_zero_prev_sign`;
+  const firedKey   = `${dateKey}_he_acum_zero_fired`;
+  const prevSign   = _firedToday.get(sigKey);
+  const alreadyDone = _firedToday.get(firedKey);
+
+  if (prevSign == null || alreadyDone) return;
+
+  const dir = prevSign > 0 ? 'positivas' : 'negativas';
+  send('⚖️ HE Acumulada Zerada', `O saldo acumulado de horas extras zerou (vinha ${dir}).`, `${dateKey}_he_acum_zero`);
+  markFired(firedKey, 1);
+}
+
 // ── Ponto de entrada público ──────────────────────────────────
 //
 // O disparo principal é feito pela Cloud Function (FCM) — sempre ativa,
@@ -311,4 +374,21 @@ export function checkNotifications() {
   checkShiftMax(times, cfg, dateKey);
   checkWorkdayMax(times, cfg, dateKey);
   checkMinInterval(times, cfg, dateKey);
+
+  // HE diária: lê do DOM (coluna .calc:nth-of-type correta = índice 6 das .calc)
+  const todayRow = getTodayRow();
+  if (todayRow) {
+    const calcs = todayRow.querySelectorAll('.calc:not(.turno3):not(.he-acum)');
+    // calcs[6] é a coluna HE (baseado na estrutura de addRow: t1,t2,normal,extra,azure,total,he)
+    const heText = calcs[6]?.textContent?.trim();
+    const heNow  = heText ? timeToMin(heText.replace('-', '')) * (heText.startsWith('-') ? -1 : 1) : null;
+    checkHeZero(heNow, cfg, dateKey);
+
+    // HE acumulada: lê da célula .he-acum da última linha preenchida
+    const allRows   = Array.from(tbody.querySelectorAll('tr'));
+    const lastFilled = [...allRows].reverse().find(tr => tr.querySelector('.he-acum')?.textContent?.trim());
+    const acumText  = lastFilled?.querySelector('.he-acum')?.textContent?.trim();
+    const heAcumNow = acumText ? timeToMin(acumText.replace('-', '')) * (acumText.startsWith('-') ? -1 : 1) : null;
+    checkHeAcumZero(heAcumNow, cfg, dateKey);
+  }
 }

@@ -283,6 +283,26 @@ setInterval(async()=>{
       </div>
     </div>
 
+    <!-- Seção 6: HE Diária Zerando -->
+    <div class="settings-section">
+      <h4>⚖️ HE Diária Zerada</h4>
+      <p class="settings-help">Avisa quando as horas extras do dia cruzam zero — seja de positivo para zero (você compensou o excesso) ou de negativo para zero (você completou o débito do dia).</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="heZeroToggle" onclick="toggleSetting('he_zero_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+    </div>
+
+    <!-- Seção 7: HE Acumulada Zerando -->
+    <div class="settings-section">
+      <h4>⚖️ HE Acumulada Zerada</h4>
+      <p class="settings-help">Avisa quando o saldo acumulado de horas extras do período inteiro cruza zero — útil para saber quando você "quitou" o banco de horas positivo ou negativo.</p>
+      <div class="settings-row">
+        <label>Ativar:</label>
+        <button id="heAcumZeroToggle" onclick="toggleSetting('he_acum_zero_enabled')" class="toggle-btn toggle-on">Ligado</button>
+      </div>
+    </div>
+
     <!-- Botões de ação -->
     <div class="settings-actions">
       <button onclick="saveNotificationForm()" class="btn-save-settings">💾 Salvar</button>

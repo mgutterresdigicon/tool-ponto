@@ -71,10 +71,12 @@ async function sendPush(token, title, body, tag) {
   try {
     await messaging.send({
       token,
-      notification: { title, body },
-      data: { tag },
+      // Sem campo `notification`: evita que o Firebase SDK exiba automaticamente
+      // uma notificação sem ícone em foreground. O display é feito exclusivamente
+      // pelo onMessage (foreground) e onBackgroundMessage (background) no SW.
+      data: { title, body, tag },
       android: { priority: 'high' },
-      apns: { payload: { aps: { sound: 'default' } } },
+      apns: { payload: { aps: { sound: 'default', contentAvailable: true } } },
     });
   } catch (err) {
     if (err.code === 'messaging/registration-token-not-registered' ||
@@ -195,6 +197,86 @@ function checkMinInterval(t, cfg, ms, fired) {
   return out;
 }
 
+// Calcula HE de uma linha (mesmo critério do frontend: tolerância de 6 min)
+function calcHe(row, baseCarga) {
+  if (!row) return null;
+  const bonus = timeToMin(row[1]) || 0;
+  const comp  = timeToMin(row[3]) || 0;
+  const carga = Math.abs(baseCarga - bonus + comp);
+  const t     = rowToTimes(row);
+  if (t.e1 == null) return null;
+  const now = new Date();
+  const nowM = now.getHours() * 60 + now.getMinutes();
+  const s1c = t.s1 ?? (t.e1 != null ? nowM : null);
+  const s2c = t.s2 ?? (t.e2 != null ? nowM : null);
+  const s3c = t.s3 ?? (t.e3 != null ? nowM : null);
+  const t1 = (t.e1 != null && s1c != null) ? s1c - t.e1 : 0;
+  const t2 = (t.e2 != null && s2c != null) ? s2c - t.e2 : 0;
+  const t3 = (t.e3 != null && s3c != null) ? s3c - t.e3 : 0;
+  const total = t1 + t2 + t3;
+  const diff  = total - carga;
+  return Math.abs(diff) >= 6 ? diff : 0;
+}
+
+// Calcula sumHE acumulado de todas as linhas do período (igual ao updateSummary do frontend)
+function calcSumHE(rows, baseCarga) {
+  let sumHE = 0;
+  for (const row of rows) {
+    const he = calcHe(row, baseCarga);
+    if (he != null) sumHE += he;
+  }
+  return sumHE;
+}
+
+// HE diária zerando — dispara na transição de sinal (positivo→zero ou negativo→zero).
+// fired contém he_zero_prev_sign (sinal anterior persistido) e he_zero_fired (já disparou hoje).
+// Retorna array de notificações a disparar + atualização de campos no fired.
+function checkHeZero(heNow, cfg, fired, newFired) {
+  if (!cfg.he_zero_enabled) return [];
+  if (heNow == null) return [];
+
+  const TOL    = 5;
+  const isZero = Math.abs(heNow) <= TOL;
+  const curSign = heNow > TOL ? 1 : (heNow < -TOL ? -1 : 0);
+
+  if (!isZero) {
+    // Atualizar sinal anterior quando não é zero
+    if (fired['he_zero_prev_sign'] !== curSign) newFired['he_zero_prev_sign'] = curSign;
+    return [];
+  }
+
+  const prevSign    = fired['he_zero_prev_sign'];
+  const alreadyDone = fired['he_zero_fired'];
+  if (prevSign == null || prevSign === 0 || alreadyDone) return [];
+
+  const dir = prevSign > 0 ? 'positivas' : 'negativas';
+  newFired['he_zero_fired'] = 1;
+  return [{ key: 'he_zero', title: '⚖️ HE Diária Zerada', body: `As horas extras do dia zeraram (vinham ${dir}).` }];
+}
+
+// HE acumulada zerando — mesma lógica para o saldo acumulado do período.
+function checkHeAcumZero(heAcumNow, cfg, fired, newFired) {
+  if (!cfg.he_acum_zero_enabled) return [];
+  if (heAcumNow == null) return [];
+
+  const TOL    = 5;
+  const isZero = Math.abs(heAcumNow) <= TOL;
+  const curSign = heAcumNow > TOL ? 1 : (heAcumNow < -TOL ? -1 : 0);
+
+  if (!isZero) {
+    if (fired['he_acum_zero_prev_sign'] !== curSign) newFired['he_acum_zero_prev_sign'] = curSign;
+    return [];
+  }
+
+  const prevSign    = fired['he_acum_zero_prev_sign'];
+  const alreadyDone = fired['he_acum_zero_fired'];
+  if (prevSign == null || prevSign === 0 || alreadyDone) return [];
+
+  const dir = prevSign > 0 ? 'positivas' : 'negativas';
+  newFired['he_acum_zero_fired'] = 1;
+  return [{ key: 'he_acum_zero', title: '⚖️ HE Acumulada Zerada', body: `O saldo acumulado de horas extras zerou (vinha ${dir}).` }];
+}
+
 // ── Cloud Function principal ─────────────────────────────────
 
 exports.checkNotifications = onSchedule({
@@ -264,7 +346,8 @@ exports.checkNotifications = onSchedule({
       // Limpar campos de controle de versões antigas
       delete fired.keys; delete fired.rowSig; delete fired.lastS1; delete fired.updatedAt;
 
-      const toFire = [];
+      const toFire  = [];
+      const newFired = {}; // acumula novos campos a persistir (inclui prev_sign das regras HE)
 
       // Regras que precisam da linha de hoje
       if (t) {
@@ -282,11 +365,32 @@ exports.checkNotifications = onSchedule({
         toFire.push(...checkMinInterval(tMin, cfg, currentMs, fired));
       }
 
-      if (toFire.length === 0) return;
-      console.log(`  🚀 ${uid.slice(0,8)}: ${toFire.map(f => f.key).join(', ')}`);
+      // HE diária e HE acumulada zerando
+      const baseCarga = timeToMin(
+        settingsSnap.exists ? (settingsSnap.data().cargaDia || '08:48') : '08:48'
+      ) ?? 528;
+      const heNow     = row ? calcHe(row, baseCarga) : null;
+      const heAcumNow = calcSumHE(rows, baseCarga);
+
+      const heZeroItems     = checkHeZero(heNow, cfg, fired, newFired);
+      const heAcumZeroItems = checkHeAcumZero(heAcumNow, cfg, fired, newFired);
+
+      // Merge: se ambas disparam juntas → 1 notificação combinada
+      if (heZeroItems.length > 0 && heAcumZeroItems.length > 0) {
+        toFire.push({
+          key:   'he_both_zero',
+          title: '⚖️ HE Diária e Acumulada Zeraram',
+          body:  `${heZeroItems[0].body} ${heAcumZeroItems[0].body}`,
+        });
+      } else {
+        toFire.push(...heZeroItems, ...heAcumZeroItems);
+      }
+
+      if (toFire.length === 0 && Object.keys(newFired).length === 0) return;
+      if (toFire.length > 0)
+        console.log(`  🚀 ${uid.slice(0,8)}: ${toFire.map(f => f.key).join(', ')}`);
 
       // Enviar para todos os dispositivos
-      const newFired = {};
       for (const { key, target, title, body } of toFire) {
         let sent = false;
         for (const { token, tokenDoc } of tokens) {
@@ -297,7 +401,8 @@ exports.checkNotifications = onSchedule({
             if (e.invalidToken) await tokenDoc.ref.delete();
           }
         }
-        if (sent) markFired(newFired, key, target);
+        if (sent && target != null) markFired(newFired, key, target);
+        else if (sent)              newFired[key] = 1; // regras sem target fixo
       }
 
       if (Object.keys(newFired).length > 0) {

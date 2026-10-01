@@ -673,6 +673,9 @@ window.openSettings = async function() {
   setFieldValue('minIntervalTime', settings.min_interval_time ?? 660);
   setFieldValue('minIntervalSafeBefore', settings.min_interval_safe_before ?? 15);
 
+  setFieldValue('he_zero_enabled',      settings.he_zero_enabled      ?? true);
+  setFieldValue('he_acum_zero_enabled', settings.he_acum_zero_enabled ?? true);
+
   bg.classList.add('active');
 };
 
@@ -703,6 +706,8 @@ const TOGGLE_BTN_IDS = {
   shift_max_enabled:       'shiftMaxToggle',
   workday_max_enabled:     'workdayMaxToggle',
   min_interval_enabled:    'minIntervalToggle',
+  he_zero_enabled:         'heZeroToggle',
+  he_acum_zero_enabled:    'heAcumZeroToggle',
 };
 
 function setFieldValue(id, value) {
@@ -755,6 +760,8 @@ window.saveNotificationForm = async function() {
   settings.shift_max_enabled       = getToggleValue('shiftMaxToggle');
   settings.workday_max_enabled     = getToggleValue('workdayMaxToggle');
   settings.min_interval_enabled    = getToggleValue('minIntervalToggle');
+  settings.he_zero_enabled         = getToggleValue('heZeroToggle');
+  settings.he_acum_zero_enabled    = getToggleValue('heAcumZeroToggle');
 
   // Campos de duração (type="time" → converter HH:MM para minutos)
   settings.interval_return_time = timeToMinSettings(document.getElementById('intervalReturnTime')?.value) || 60;
@@ -800,6 +807,8 @@ window.resetSettings = async function() {
     min_interval_enabled: true,
     min_interval_time: 660,
     min_interval_safe_before: 15,
+    he_zero_enabled: true,
+    he_acum_zero_enabled: true,
   };
   
   localStorage.setItem('ponto_notification_settings', JSON.stringify(defaults));

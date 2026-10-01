@@ -17,7 +17,7 @@ tool-ponto/
 │       ├── auth.js             # Login/logout Google + gerenciamento de usuários
 │       ├── state.js            # Estado global
 │       ├── modal.js            # Modal (confirm/input) + sistema de toasts
-│       ├── notifications.js    # Notificações do sistema (5 regras configuráveis)
+│       ├── notifications.js    # Notificações do sistema (7 regras configuráveis)
 │       ├── storage.js          # Persistência (Firestore + localStorage + realtime)
 │       └── ponto.js            # Lógica principal (cálculos, UI, exportação)
 ├── standalone/
@@ -182,8 +182,12 @@ Requer permissão de notificação no navegador. Configurável pelo botão ⚙�
 | ⏱️ Turno máximo | Avisa quando T1 ou T2 se aproxima do limite de duração | Entrada 1 ou Entrada 2 aberta (sem saída) |
 | 📅 Jornada máxima | Avisa quando a Saída Extra da tabela está próxima | Entrada 1 preenchida |
 | 🌙 Intervalo mínimo entre jornadas | Avisa quando o descanso após a última saída do dia está no limite | Última saída do dia (S1, S2 ou S3 com T3) |
+| ⚖️ HE diária zerada | Avisa quando as horas extras do dia cruzam zero (positivo→zero ou negativo→zero) | HE do dia dentro da tolerância de ±5min |
+| ⚖️ HE acumulada zerada | Avisa quando o saldo acumulado do período cruza zero | Saldo acumulado dentro da tolerância de ±5min |
 
 Cada regra dispara dois avisos: um antecipado (X minutos antes, configurável) e um no momento exato. Configurar "Avisar antes" como `0` desativa o aviso antecipado — apenas o exato será enviado.
+
+**Nota**: As regras de HE zerada (diária e acumulada) não possuem aviso antecipado — disparam apenas no momento da transição. Se ambas ocorrerem no mesmo minuto, uma única notificação combinada é enviada.
 
 ## Desenvolvimento
 

@@ -22,8 +22,10 @@ const fcmMessaging = firebase.messaging();
 
 // Recebe push FCM quando o app está fechado ou em background
 fcmMessaging.onBackgroundMessage(payload => {
-  const { title, body } = payload.notification || {};
-  const tag = payload.data?.tag || 'ponto-notif';
+  // title/body vêm em payload.data (sem campo notification no envio)
+  const title = payload.data?.title || payload.notification?.title;
+  const body  = payload.data?.body  || payload.notification?.body;
+  const tag   = payload.data?.tag   || 'ponto-notif';
   if (!title) return;
   self.registration.showNotification(title, {
     body,
